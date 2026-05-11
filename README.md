@@ -1,8 +1,7 @@
- `│ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │`  
-<hr>
+<img src="divider.svg" width="100%" alt="">
 
-infrastructure engineer across fintech, web3, agentic and dev tooling  
-building to solve. correctness, auditability, automation, velocity as core tenets  
+infra oriented engineer across fintech, web3, agentic and dev tooling  
+building to solve. auditability, correctness, automation, efficiency as core tenets  
 currently engaged in prod-hardened paradigms, load-bearing solutions, ai use in engineering  
 interested in governance and provenance primitives, substrate-based, systemic design philosophies
 
@@ -10,18 +9,19 @@ interested in governance and provenance primitives, substrate-based, systemic de
 
 **[polyedge](https://github.com/PolyEdge-Trade)**  ·  fintech infrastructure  ·  prediction market platform  
 tokio streaming data plane  ·   axum serving plane  ·   typescript react user plane  
-<sub>*raise round slated*</sub>
+*raise round slated*
 
 **[fortifai](https://github.com/Myplestory/FortifAIBot)**  ·  cognitive infrastructure  ·   technical fluency hardener  
 discord.py v1 user plane  ·   dreyfus, ieee swecom, sfia v9 anchored  ·   industry agnostic pipeline  
-<sub>*web port slated*</sub>
+*web port slated*
 
 *_*  ·  agentic infrastructure  
-<sub>*tba*</sub>
+*tba*
 
  
 
 fortifai latest run  ·  streak `2d`
+
 ```
 session    softeng · b3 / swe                         updated  2026-05-11
 aggregate  2.6 / 5 · competent                        run      1h 6m
@@ -42,7 +42,7 @@ gaps        class-imbalance · resampling-strategy · calibration-loss · api-pa
 calibrated   dreyfus · ieee swecom · sfia v9
 scale        1.0 (novice)  →  5.0 (strategic)
 ```
-<sub>*widget regenerated from FortifAI's `data/session.json` via `profile_widget.py`*</sub>
 
-<hr>
-`│ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │`
+*widget regenerated from fortifai's `data/session.json` via `profile_widget.py`*
+
+<img src="divider.svg" width="100%" alt="">
