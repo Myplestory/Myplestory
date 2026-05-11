@@ -1,6 +1,4 @@
- 
-
-`│ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │`
+ `│ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │`
 
 ### `charles · myplestory`
 
@@ -8,9 +6,7 @@
 
 `─────────────────────────────────────────────────`
 
- 
-
-infrastructure engineer across fintech, web3, agentic and dev tooling
+ infrastructure engineer across fintech, web3, agentic and dev tooling
 
 building to solve. correctness, auditability, automation, velocity as core tenets
 
@@ -18,9 +14,7 @@ currently engaged in prod-hardened paradigms, load-bearing solutions, ai use in 
 
 interested in governance and provenance primitives, substrate-based, systemic design philosophies
 
- 
 
-### work
 
 **[polyedge](https://github.com/PolyEdge-Trade)**  ·  fintech infrastructure  ·  prediction market platform  
 tokio streaming data plane  ·   axum serving plane  ·   typescript react user plane  
@@ -30,12 +24,12 @@ tokio streaming data plane  ·   axum serving plane  ·   typescript react u
 discord.py v1 user plane  ·   dreyfus, ieee swecom, sfia v9 anchored  ·   industry agnostic pipeline  
 *web port slated*
 
-*_*  ·  agentic infrastructure  ·  orchestration and governance  
-*tba*
+*_*  ·  agentic infrastructure  
+*tba* 
 
- 
 
-### fortifai — latest run  ·  streak `2d`
+
+### fortifai latest run  ·  streak `2d`
 
 ```
 session    softeng · b3 / swe                         updated  2026-05-11
