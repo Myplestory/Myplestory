@@ -1,14 +1,9 @@
- `│ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │`  
-**`charles · myplestory`**  
-`rust  typescript  python`  
-`─────────────────────────────────────────────────`
+ `│ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │`  
+<hr>
 
-infrastructure engineer across fintech, web3, agentic and dev tooling
-
-building to solve. correctness, auditability, automation, velocity as core tenets
-
-currently engaged in prod-hardened paradigms, load-bearing solutions, ai use in engineering
-
+infrastructure engineer across fintech, web3, agentic and dev tooling  
+building to solve. correctness, auditability, automation, velocity as core tenets  
+currently engaged in prod-hardened paradigms, load-bearing solutions, ai use in engineering  
 interested in governance and provenance primitives, substrate-based, systemic design philosophies
 
  
@@ -26,7 +21,7 @@ discord.py v1 user plane  ·   dreyfus, ieee swecom, sfia v9 anchored  ·   
 
  
 
-### fortifai latest run  ·  streak `2d`
+fortifai latest run  ·  streak `2d`
 ```
 session    softeng · b3 / swe                         updated  2026-05-11
 aggregate  2.6 / 5 · competent                        run      1h 6m
@@ -49,10 +44,5 @@ scale        1.0 (novice)  →  5.0 (strategic)
 ```
 <sub>*widget regenerated from FortifAI's `data/session.json` via `profile_widget.py`*</sub>
 
- 
-
-`─────────────────────────────────────────────────`
-
-`│ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │`
-
- 
+<hr>
+`│ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │`

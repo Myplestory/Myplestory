@@ -13,10 +13,12 @@ HERE = Path(__file__).resolve().parent
 DEFAULT_SESSION = HERE.parent / "FortifAI" / "data" / "session.json"
 DEFAULT_README = HERE / "README.md"
 
-START = "<!-- WIDGET:START -->"
-END = "<!-- WIDGET:END -->"
-
 WIDTH = 65
+
+WIDGET_RE = re.compile(
+    r"(### )?fortifai latest run[^\n]*\n```\n.*?\n```",
+    re.DOTALL,
+)
 
 
 def load_blob(path: Path) -> dict:
@@ -206,18 +208,18 @@ def render(session: dict, run: dict, canonical_count: int | None = None, streak:
 
     body = "\n".join(lines).rstrip()
     if streak > 0:
-        title = f"### fortifai — latest run &nbsp;·&nbsp; streak `{streak}d`"
+        title = f"fortifai latest run \xa0·\xa0 streak `{streak}d`"
     else:
-        title = "### fortifai — latest run"
-    return f"{title}\n\n```\n{body}\n```"
+        title = "fortifai latest run"
+    return f"{title}\n```\n{body}\n```"
 
 
 def splice(readme: str, widget: str) -> str:
-    pattern = re.compile(re.escape(START) + r".*?" + re.escape(END), re.DOTALL)
-    block = f"{START}\n{widget}\n{END}"
-    if pattern.search(readme):
-        return pattern.sub(block, readme)
-    return readme.rstrip() + "\n\n" + block + "\n"
+    m = WIDGET_RE.search(readme)
+    if m:
+        prefix = m.group(1) or ""
+        return readme[:m.start()] + prefix + widget + readme[m.end():]
+    return readme.rstrip() + "\n\n" + widget + "\n"
 
 
 def main() -> int:
