@@ -7,13 +7,13 @@ interested in governance and provenance primitives, substrate-based, systemic de
 
  
 
-**[polyedge](https://github.com/PolyEdge-Trade)**  ·  fintech infrastructure  ·  prediction market platform  ·  <sub>*raise round slated*</sub><br>
+**[polyedge](https://github.com/PolyEdge-Trade)**  ·  fintech infrastructure  ·  prediction market platform  ·  *raise round slated*<br>
 `async tokio data plane` `axum serving plane` `react user plane`
 
-**[fortifai](https://github.com/Myplestory/FortifAIBot)**  ·  cognitive infrastructure  ·   technical fluency hardener  ·  <sub>*web port slated*</sub><br>
+**[fortifai](https://github.com/Myplestory/FortifAIBot)**  ·  cognitive infrastructure  ·   technical fluency hardener  ·  *web port slated*<br>
 `discord user plane` `dreyfus, ieee swecom, sfia v9 anchored` `industry agnostic pipeline`
 
-*_*  ·  agentic infrastructure  ·  <sub>*tba*</sub>
+*_*  ·  agentic infrastructure  ·  *tba*
 
  
 
