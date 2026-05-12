@@ -8,15 +8,15 @@ interested in governance and provenance primitives, substrate-based, systemic de
  
 
 **[polyedge](https://github.com/PolyEdge-Trade)**  ·  fintech infrastructure  ·  prediction market platform  
-tokio streaming data plane  ·   axum serving plane  ·   typescript react user plane  
-*raise round slated*
+async tokio data plane  ·   axum serving plane  ·  react user plane  
+<sub>*raise round slated*</sub>
 
 **[fortifai](https://github.com/Myplestory/FortifAIBot)**  ·  cognitive infrastructure  ·   technical fluency hardener  
-discord.py v1 user plane  ·   dreyfus, ieee swecom, sfia v9 anchored  ·   industry agnostic pipeline  
-*web port slated*
+discord user plane  ·   dreyfus, ieee swecom, sfia v9 anchored  ·   industry agnostic pipeline  
+<sub>*web port slated*</sub>
 
 *_*  ·  agentic infrastructure  
-*tba*
+<sub>*tba*</sub>
 
  
 
@@ -43,6 +43,6 @@ calibrated   dreyfus · ieee swecom · sfia v9
 scale        1.0 (novice)  →  5.0 (strategic)
 ```
 
-*widget regenerated from fortifai's `data/session.json` via `profile_widget.py`*
+<sub>*widget regenerated from fortifai's `data/session.json` via `profile_widget.py`*</sub>
 
 <img src="divider.svg" width="100%" alt="">

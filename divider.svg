@@ -1,13 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="20" preserveAspectRatio="none">
+<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="5" preserveAspectRatio="none">
   <style>
     .ink { fill: #1a1a1a; }
     @media (prefers-color-scheme: dark) { .ink { fill: #e0e0e0; } }
   </style>
   <defs>
-    <pattern id="d" x="0" y="0" width="18" height="20" patternUnits="userSpaceOnUse">
-      <text x="9" y="16" text-anchor="middle" class="ink"
+    <pattern id="d" x="0" y="0" width="5" height="5" patternUnits="userSpaceOnUse">
+      <text x="2.5" y="4" text-anchor="middle" class="ink"
             font-family="'Noto Serif KR', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Nanum Myeongjo', Batang, serif"
-            font-size="16">ㅣ</text>
+            font-size="4">ㅣ</text>
     </pattern>
   </defs>
   <rect width="100%" height="100%" fill="url(#d)"/>
