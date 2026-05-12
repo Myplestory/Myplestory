@@ -1,30 +1,30 @@
 
 
-hi, i'm charles  
+<samp>hi, i'm charles</samp>  
   
-always open to talk  ·  [discord](https://discord.com/users/myplestory)  ·  [twitter](https://x.com/tormentedos)  ·  [email](mailto:myplestorydev@gmail.com)  ·  [site](https://myplestory.dev)
+<samp>always open to talk  ·  [discord](https://discord.com/users/myplestory)  ·  [twitter](https://x.com/tormentedos)  ·  [email](mailto:myplestorydev@gmail.com)  ·  [site](https://myplestory.dev)</samp>
 
  
 
-infra oriented engineer across fintech, web3, and tooling  
+<samp>infra oriented engineer across fintech, web3, and tooling  
 building to solve. focused on correctness, auditability, automation, efficiency  
-currently working on low latency infra, compliance systems, evaluation harnesses  
+currently working on low latency infra, compliance systems, evaluation harnesses</samp>  
 
  
 
-**[polyedge](https://github.com/PolyEdge-Trade)**  ·  fintech infrastructure  ·  prediction market platform  ·  *hardening paid tiers*  
+**<samp>[polyedge](https://github.com/PolyEdge-Trade)</samp>**  ·  <samp>fintech infrastructure</samp>  ·  <samp>prediction market platform</samp>  ·  *<samp>hardening paid tiers</samp>*  
 
 `tokio-powered data plane` `axum + tower`  `parquet`  `react · vercel · cloudflare`
 
  
 
-**[fortifai](https://github.com/Myplestory/FortifAIBot)**  ·  cognitive infrastructure · LLM-proctored harness · *hardening falsifiability*  
+**<samp>[fortifai](https://github.com/Myplestory/FortifAIBot)</samp>**  ·  <samp>cognitive infrastructure</samp> · <samp>LLM-proctored harness</samp> · *<samp>hardening falsifiability</samp>*  
 
 `discord interfaced` `sqlite` `claude` `prompt-cached streaming` `agnostic pipeline`
 
  
 
-*___*
+*<samp>___</samp>*
 
  
   
