@@ -1,7 +1,7 @@
 <img src="divider.svg" width="100%" height="15" alt="">
 
-<samp>charles  ·  myplestory</samp>
-<sub><samp><i>always open: <a href="https://discord.com/users/myplestory">𝔻</a>  ·  <a href="mailto:myplestorydev@gmail.com">@</a>  ·  <a href="https://myplestory.dev">~</a>  ·  <a href="https://x.com/tormentedos">𝕏</a>  ·  <a href="https://www.linkedin.com/in/myplestorydev/">in</a></i></samp></sub>
+<samp>hi, i'm charles</samp><br>
+<samp><i>always open: <a href="https://discord.com/users/myplestory">𝔻</a>  ·  <a href="mailto:myplestorydev@gmail.com">@</a>  ·  <a href="https://myplestory.dev">~</a>  ·  <a href="https://x.com/tormentedos">𝕏</a>  ·  <a href="https://www.linkedin.com/in/myplestorydev/">in</a></i></samp>
 
  
 <img src="https://spotifynowlistening.vercel.app/api/spotify" width="100%" alt=""><br>
