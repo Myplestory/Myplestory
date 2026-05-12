@@ -1,4 +1,4 @@
-<img src="divider.svg" width="100%" alt="">
+<img src="divider.svg" width="100%" height="5" alt="">
 
 infra oriented engineer across fintech, web3, agentic and dev tooling  
 building to solve. auditability, correctness, automation, efficiency as core tenets  
@@ -45,4 +45,4 @@ scale        1.0 (novice)  →  5.0 (strategic)
 
 <sub>*widget regenerated from fortifai's `data/session.json` via `profile_widget.py`*</sub>
 
-<img src="divider.svg" width="100%" alt="">
+<img src="divider.svg" width="100%" height="5" alt="">
