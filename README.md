@@ -1,39 +1,41 @@
-<img src="divider.svg" width="100%" height="15" alt="">
 
-<samp>hi, i'm charles</samp><br>
-<samp>always open: <a href="https://discord.com/users/myplestory">𝔻</a>  ·  <a href="mailto:myplestorydev@gmail.com">@</a>  ·  <a href="https://myplestory.dev">~</a>  ·  <a href="https://x.com/tormentedos">𝕏</a>  ·  <a href="https://www.linkedin.com/in/myplestorydev/">in</a></i></samp>
 
- 
-<img src="https://spotifynowlistening.vercel.app/api/spotify" width="100%" alt=""><br>
- 
-
-<samp>infra oriented engineer across fintech, web3, agentic and dev tooling</samp>  
-<samp>building to solve. auditability, correctness, automation, efficiency as core tenets</samp>  
-<samp>currently building execution infra, evaluation harnesses, ai-augmented engineering</samp>  
-<samp>interested in governance, provenance, verifiable systems and design philosophies</samp>
+hi, i'm charles  
+  
+always open to talk:  [discord](https://discord.com/users/myplestory)  ·  [twitter](https://x.com/tormentedos)  ·  [email](mailto:myplestorydev@gmail.com)  ·  [site](https://myplestory.dev)
 
  
 
-<samp><b><a href="https://github.com/PolyEdge-Trade">polyedge</a></b> <a href="https://polyedge.trade">↗</a>  ·  fintech infrastructure  ·  prediction market platform  ·  <i>gtm seed slated</i></samp><br>
-`tokio-powered data plane` `axum + tower` `react · vercel · cloudflare`
+infra oriented engineer across fintech, web3, and tooling  
+building to solve. focused on correctness, auditability, automation, efficiency  
+currently working on low latency infra, compliance systems, evaluation harnesses  
 
  
 
-<samp><b><a href="https://github.com/Myplestory/FortifAIBot">fortifai</a></b>  ·  knowledge hardening protocol  ·  band-calibrated quizzes  ·  <i>web port slated</i></samp><br>
+**[polyedge](https://github.com/PolyEdge-Trade)** [↗](https://polyedge.trade)  ·  fintech infrastructure  ·  prediction market platform  ·  *hardening paid tiers*  
+
+`tokio-powered data plane` `axum + tower`  `parquet`  `react · vercel · cloudflare`
+
+ 
+
+**[fortifai](https://github.com/Myplestory/FortifAIBot)**  ·  knowledge hardening protocol · band-calibrated timed quizzes · *personal evaluation harness*  
+
 `discord interface` `dreyfus · ieee swecom · sfia v9 anchored` `industry agnostic pipeline` `scoped literature`
 
  
 
-<samp><i>_</i></samp>
+*_*
+
+ 
+  
 
  
 
-<details>
-<summary><samp>fortifai · self-audit loop · streak 2d</samp></summary>
+fortifai · self-audit loop · streak 2d
 
-<sub><samp><i>self-audit: scenario-based time-pressured recall, cross-domain breadth, b3-calibrated<br>
-invariant: zero outside assistance. no docs, no ai, no peers. 10m/response, 5m/single refinement<br>
-bar: consistent ≥3 across all 8 swe fields</i></samp></sub>
+*self-audit: scenario-based time-pressured recall, cross-domain breadth, b3-calibrated*  
+*invariant: zero outside assistance. no docs, no ai, no peers. 10m/response, 5m/single refinement*  
+*bar: consistent ≥3 across all 8 swe fields*
 
 ```
 industry     swe                                  updated         2026-05-11
@@ -54,10 +56,9 @@ score (dreyfus)    1 (novice) → 3 (competent) → 5 (mastered)
 band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 ```
 
-<details>
-<summary><samp>q1 · ml-engineering · class-imbalance · pre 1 → post 1 · ceiling b1 · transitional b2</samp></summary>
+q1 · ml-engineering · class-imbalance · pre 1 → post 1 · ceiling b1 · transitional b2
 
-<small>
+
 
  
 
@@ -72,13 +73,11 @@ band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 - [remediation] Hands-On Machine Learning with Scikit-Learn, Keras, and TensorFlow (3e) — Ch. 3 'Classification' §Performance Measures and Ch. 4 'Training Models' §Logistic Regression — through end of Ch. 4 — ~5h
 - [remediation] Properly Calibrated Probabilities under Class Imbalance — Entire 'Probability calibration' user-guide page (read fully) — ~1h
 
-</small>
-</details>
 
-<details>
-<summary><samp>q2 · frontend · hydration-cost · pre 3 → post 4 · ceiling b3 · transitional b4</samp></summary>
 
-<small>
+q2 · frontend · hydration-cost · pre 3 → post 4 · ceiling b3 · transitional b4
+
+
 
  
 
@@ -93,13 +92,11 @@ band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 - [remediation] web.dev — Core Web Vitals and Rendering Performance — 'Largest Contentful Paint (LCP)', 'Interaction to Next Paint (INP)', and 'Total Blocking Time' articles — read all three end-to-end — ~45m
 - [growth] React Server Components and Selective Hydration — Connection: once initial hydration cost is understood, RSC + selective hydration is the next-step strategy that lets the SSG-shell-plus-CSR-islands intuition the answer reached be implemented as a single framework primitive. — ~1h
 
-</small>
-</details>
 
-<details>
-<summary><samp>q3 · sre · autoscaling-signal-selection · pre 4 → post 4 · ceiling b3 · transitional b4</samp></summary>
 
-<small>
+q3 · sre · autoscaling-signal-selection · pre 4 → post 4 · ceiling b3 · transitional b4
+
+
 
  
 
@@ -114,13 +111,11 @@ band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 - [remediation] Google SRE Book — Practical Alerting and Handling Overload — Ch. 6 'Monitoring Distributed Systems' (SLI/SLO/SLA section) and Ch. 21 'Handling Overload' — read both chapters — ~2h
 - [growth] KEDA — Kubernetes Event-Driven Autoscaling — Connection: the answer independently reasoned to queue-depth-based horizontal scaling; KEDA is the productionised primitive that implements exactly that scaler taxonomy on top of HPA. — ~45m
 
-</small>
-</details>
 
-<details>
-<summary><samp>q4 · backend · api-pagination-consistency · pre 2 → post 1 · ceiling b1 · transitional b2</samp></summary>
 
-<small>
+q4 · backend · api-pagination-consistency · pre 2 → post 1 · ceiling b1 · transitional b2
+
+
 
  
 
@@ -135,13 +130,11 @@ band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 - [remediation] Use the Index, Luke! — Paging Through Results — 'Paging Through Results' chapter — read the full chapter including 'The Trouble with OFFSET' and 'Seek Method' subsections — ~30m
 - [remediation] Designing Data-Intensive Applications — Ch. 7 'Transactions' §Read Skew and Snapshot Isolation (pp. 233–242) and the consistency-anomaly discussion through 'Lost Updates' (pp. 246) — ~1h 15m
 
-</small>
-</details>
 
-<details>
-<summary><samp>q5 · security · sql-injection-defense-layers · pre 3 → post 3 · ceiling b2 · transitional b3</samp></summary>
 
-<small>
+q5 · security · sql-injection-defense-layers · pre 3 → post 3 · ceiling b2 · transitional b3
+
+
 
  
 
@@ -156,10 +149,9 @@ band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 - [remediation] OWASP SQL Injection Prevention Cheat Sheet — Defense Option 1 (Prepared Statements) and 'Defense Option 4: Allow-list Input Validation' — read both sections fully — ~30m
 - [remediation] PostgreSQL Documentation — Prepared Statements and Protocol-Level Bind — 'PREPARE' SQL command page and the linked 'Extended Query' protocol-flow subsection in Ch. 55 Frontend/Backend Protocol — ~25m
 
-</small>
-</details>
 
-<sub><samp><i>widget regenerated from fortifai's data/session.json via profile_widget.py</i></samp></sub>
-</details>
 
-<img src="divider.svg" width="100%" height="15" alt="">
+*widget regenerated from fortifai's data/session.json via profile_widget.py*
+
+
+
