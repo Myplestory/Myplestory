@@ -1,25 +1,27 @@
 <img src="divider.svg" width="100%" height="15" alt="">
 
-infra oriented engineer across fintech, web3, agentic and dev tooling  
-building to solve. auditability, correctness, automation, efficiency as core tenets  
-currently engaged in prod-hardened paradigms, load-bearing solutions, ai use in engineering  
-interested in governance and provenance primitives, substrate-based, systemic design philosophies
+<samp>infra oriented engineer across fintech, web3, agentic and dev tooling</samp>  
+<samp>building to solve. auditability, correctness, automation, efficiency as core tenets</samp>  
+<samp>currently engaged in prod-hardened paradigms, load-bearing solutions, ai use in engineering</samp>  
+<samp>interested in governance and provenance primitives, substrate-based, systemic design philosophies</samp>
 
  
 
-**[polyedge](https://github.com/PolyEdge-Trade)**  ·  fintech infrastructure  ·  prediction market platform  ·  *raise round slated*<br>
+<samp><b><a href="https://github.com/PolyEdge-Trade">polyedge</a></b>  ·  fintech infrastructure  ·  prediction market platform  ·  <i>raise round slated</i></samp><br>
 `async tokio data plane` `axum serving plane` `react user plane`
 
-**[fortifai](https://github.com/Myplestory/FortifAIBot)**  ·  cognitive infrastructure  ·   technical fluency hardener  ·  *web port slated*<br>
-`discord user plane` `dreyfus, ieee swecom, sfia v9 anchored` `industry agnostic pipeline`
+ 
 
-*_*  ·  agentic infrastructure  ·  *tba*
+<samp><b><a href="https://github.com/Myplestory/FortifAIBot">fortifai</a></b>  ·  cognitive infrastructure  ·   technical fluency hardener  ·  <i>web port slated</i></samp><br>
+`discord user plane` `dreyfus, ieee swecom, sfia v9 anchored` `industry agnostic pipeline`
 
  
 
-<samp>now playing</samp>
+<samp><i>_</i>  ·  agentic infrastructure  ·  <i>tba</i></samp>
 
-<img src="https://spotifynowlistening.vercel.app/api/spotify" alt="" height="20">
+ 
+
+<samp>now playing</samp>  ·  <img src="https://spotifynowlistening.vercel.app/api/spotify" alt="" height="20">
 
 <samp>fortifai latest run</samp>  ·  <samp>streak</samp> `2d`
 
@@ -44,6 +46,6 @@ calibrated   dreyfus · ieee swecom · sfia v9
 scale        1.0 (novice)  →  5.0 (strategic)
 ```
 
-<sub>*widget regenerated from fortifai's <samp>data/session.json</samp> via <samp>profile_widget.py</samp>*</sub>
+<sub><samp><i>widget regenerated from fortifai's data/session.json via profile_widget.py</i></samp></sub>
 
 <img src="divider.svg" width="100%" height="15" alt="">
