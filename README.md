@@ -17,6 +17,10 @@ interested in governance and provenance primitives, substrate-based, systemic de
 
  
 
+<samp>now playing</samp>
+
+<img src="https://spotifynowlistening.vercel.app/api/spotify" alt="" height="20">
+
 <samp>fortifai latest run</samp>  ·  <samp>streak</samp> `2d`
 
 ```
