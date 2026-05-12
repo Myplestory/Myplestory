@@ -14,7 +14,7 @@
 
  
 
-<samp><b><a href="https://github.com/PolyEdge-Trade">polyedge</a></b>  ·  fintech infrastructure  ·  prediction market platform  ·  <i>raise round slated</i></samp><br>
+<samp><b><a href="https://github.com/PolyEdge-Trade">polyedge</a></b>  ·  fintech infrastructure  ·  prediction market platform  ·  <i>gtm seed slated</i></samp><br>
 `async tokio data plane` `axum serving plane` `react user plane`
 
  
