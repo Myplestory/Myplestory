@@ -1,5 +1,9 @@
 <img src="divider.svg" width="100%" height="15" alt="">
 
+<img src="https://spotifynowlistening.vercel.app/api/spotify" width="100%" alt="">
+
+ 
+
 <samp>infra oriented engineer across fintech, web3, agentic and dev tooling</samp>  
 <samp>building to solve. auditability, correctness, automation, efficiency as core tenets</samp>  
 <samp>currently engaged in prod-hardened paradigms, load-bearing solutions, ai use in engineering</samp>  
@@ -20,8 +24,6 @@
 <samp><i>_</i>  ·  agentic infrastructure  ·  <i>tba</i></samp>
 
  
-
-<img src="https://spotifynowlistening.vercel.app/api/spotify" width="100%" alt="">
 
 <samp>fortifai latest run</samp>  ·  <samp>streak</samp> `2d`
 
