@@ -1,7 +1,7 @@
 <img src="divider.svg" width="100%" height="15" alt="">
 
-<img src="https://spotifynowlistening.vercel.app/api/spotify" width="100%" alt="">
-
+ 
+<img src="https://spotifynowlistening.vercel.app/api/spotify" width="100%" alt=""><br>
  
 
 <samp>infra oriented engineer across fintech, web3, agentic and dev tooling</samp>  
@@ -26,7 +26,6 @@
  
 
 <samp>fortifai latest run</samp>  ·  <samp>streak</samp> `2d`
-
 ```
 session    softeng · b3 / swe                         updated  2026-05-11
 aggregate  2.6 / 5 · competent                        run      1h 6m
@@ -47,7 +46,6 @@ gaps        class-imbalance · resampling-strategy · calibration-loss · api-pa
 calibrated   dreyfus · ieee swecom · sfia v9
 scale        1.0 (novice)  →  5.0 (strategic)
 ```
-
 <sub><samp><i>widget regenerated from fortifai's data/session.json via profile_widget.py</i></samp></sub>
 
 <img src="divider.svg" width="100%" height="15" alt="">
