@@ -1,4 +1,4 @@
-<img src="divider.svg" width="100%" height="5" alt="">
+<img src="divider.svg" width="100%" height="15" alt="">
 
 infra oriented engineer across fintech, web3, agentic and dev tooling  
 building to solve. auditability, correctness, automation, efficiency as core tenets  
