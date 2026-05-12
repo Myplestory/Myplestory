@@ -33,7 +33,7 @@ currently working on low latency infra, compliance systems, evaluation harnesses
  
 
 <details>
-<summary><samp>fortifai · self-audit loop · streak 2d</samp></summary>
+<summary><samp>fortifai · self-audit loop · streak 3d</samp></summary>
 
 <sub><samp><i>self-audit: scenario-based time-pressured recall, cross-domain breadth, b3-calibrated<br>
 invariant: zero outside assistance. no docs, no ai, no peers. 10m/response, 5m/single refinement<br>
@@ -41,125 +41,124 @@ breadth: systems/distributed, backend, sre, ml, ai/llm, frontend, data, security
 bar: consistent ≥3 across all 8 swe fields</i></samp></sub>
 
 ```
-industry     swe                                  updated         2026-05-11
-scope        cross-domain · grab-bag              duration        1h 6m
+industry     swe                                  updated         2026-05-12
+scope        cross-domain · grab-bag              duration        48m 2s
 calibration  b3 "practitioner"                    rotation bias   underindexed-weighted
 
                                               b₂  b3  b₄
-q1  ml-engineering     class-imbalance         ₂   1   ₁
-q2  frontend           hydration-cost          ₄   4   ₃
-q3  sre                autoscaling-signal      ₄   4   ₃
-q4  backend            api-pagination          ₂   1   ₁
-q5  security           sql-injection-defense   ₃   3   ₂
+q1  data-engineering   data-contract           ₃   2   ₂
+q2  backend            bulkhead-pattern        ₄   3   ₃
+q3  ai-llm             prompt-caching          ₂   2   ₂
+q4  sre                pod-disruption-budget   ₂   2   ₂
+q5  security           server-side-request     ₃   3   ₃
 
-strengths    autoscaling-signal-selection · scale-up-lag · cpu-vs-queue-depth-metric · hydration-cost
-gaps         class-imbalance · resampling-strategy · calibration-loss · api-pagination-consistency
+gaps         kv-cache-reuse · prefix-stability-requirement · voluntary-vs-involuntary-disruption · drain-vs-eviction-semantics
 
 score (dreyfus)    1 (novice) → 3 (competent) → 5 (mastered)
 band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 ```
 
 <details>
-<summary><samp>q1 · ml-engineering · class-imbalance · pre 1 → post 1 · ceiling b1 · transitional b2</samp></summary>
+<summary><samp>q1 · data-engineering · data-contract · pre 2 → post 2 · ceiling b2 · transitional b3</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A team is training a binary classifier to flag fraudulent transactions. The positive class is ~0.3% of the dataset. A junior engineer trains on the raw data and reports 99.7% accuracy. A senior suggests SMOTE oversampling on the training set; another suggests class weighting in the loss; a third suggests downsampling the majority class. Explain the mechanism by which each of these three approaches changes what the model learns, what each gives up (consider calibration of predicted probabilities and sample efficiency), and how you would decide between class-weighting and SMOTE for a downstream system that uses the predicted probability as a score (not just a hard label).
+**Scenario:** A logistics SaaS company runs a Kafka-based event pipeline. The `shipment_events` topic is produced by the Operations team's service and consumed by three downstream pipelines: a billing aggregator, a customer-facing tracking API, and an ML feature store. Last quarter, the Operations team renamed `status` to `shipment_status` and changed `estimated_delivery_ts` from a string to an epoch milliseconds long — both in the same release. All three consumers broke in production at different times over the following 48 hours. The team has now agreed to introduce a 'data contract' enforced via a schema registry (Avro or Protobuf). Explain the mechanism by which a schema registry with a compatibility policy (e.g., BACKWARD) would have prevented this specific incident at producer-publish time, what the two changes above each constitute under BACKWARD compatibility rules, and what the registry cannot protect against (i.e., what failure modes remain even with the contract in place). Be specific about which side of the producer-consumer boundary each check runs on.
 
  
 
-**Assessment:** The response correctly enumerates the three options and where each sits in the pipeline, but never engages with the concept the question is structured around — what each intervention does to the predicted-probability output as a number that a downstream system consumes as a score. The refinement explicitly named the calibration probe, and the answer doubled down on the position that class weighting leaves outputs essentially unaffected, which is the wrong direction. The gap is in connecting any of the three interventions to a specific, named distortion of the predicted-probability distribution relative to the empirical base rate.
+**Assessment:** The answer treats the registry as a generic 'lookup/routing' abstraction rather than a publish-time compatibility validator, and does not classify the rename or the string→long change against the BACKWARD rule. The refinement correctly locates the check 'right before publish' but misattributes it to the broker rather than the producer-side serializer that calls the registry HTTP API. The gap is in naming what BACKWARD specifically rejects and why, and where in the publish flow that rejection physically occurs.
 
 **Literature**
 
-- [remediation] Hands-On Machine Learning with Scikit-Learn, Keras, and TensorFlow (3e) — Ch. 3 'Classification' §Performance Measures and Ch. 4 'Training Models' §Logistic Regression — through end of Ch. 4 — ~5h
-- [remediation] Properly Calibrated Probabilities under Class Imbalance — Entire 'Probability calibration' user-guide page (read fully) — ~1h
+- [remediation] Confluent Schema Registry Documentation — Compatibility Types — §Schema Evolution and Compatibility — 'Compatibility Types' subsection (BACKWARD, FORWARD, FULL, NONE) and 'Order of upgrading clients' — ~25m
+- [remediation] Confluent Schema Registry Documentation — Serializer & Formatter — §Serializer and Formatter — 'How the Serializer Works' subsection (producer-side schema registration and compatibility check before publish) — ~15m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q2 · frontend · hydration-cost · pre 3 → post 4 · ceiling b3 · transitional b4</samp></summary>
+<summary><samp>q2 · backend · bulkhead-pattern · pre 3 → post 3 · ceiling b3 · transitional b4</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A marketing-heavy e-commerce site is choosing between client-side rendering (CSR), server-side rendering (SSR), and static site generation (SSG) for product detail pages. The pages have personalized recommendations below the fold and a price/inventory widget that must reflect live values. Explain how each rendering strategy affects FCP and TTI, what hydration is and why it can make a 'fast-looking' SSR page feel unresponsive on mid-tier mobile, and recommend an approach for this page (commit to one). Identify which parts of the page would be problematic under your chosen strategy and how you'd mitigate them.
+**Scenario:** A B2B SaaS backend exposes a single REST API process (a Spring Boot service, but the question is framework-agnostic) that serves three categories of endpoints from a shared thread pool of 200 worker threads: (a) fast tenant-dashboard reads (~10ms p99), (b) report-generation endpoints that synchronously call a slow analytics database (~3-8s p99), and (c) webhook delivery endpoints that call out to third-party customer URLs (unbounded latency — some customers' endpoints take 30s before timing out). During incidents, a single customer with a slow webhook receiver causes the dashboard endpoints for *all* tenants to time out, even though the dashboard endpoints themselves have not changed. Explain the mechanism that causes this cross-endpoint degradation, then describe the bulkhead pattern as the remediation: what specifically gets partitioned, what each partition guards, and what the configuration tradeoff is (i.e., why you can't just make each pool 'large enough'). Finally, name one failure mode that bulkheading does NOT fix.
 
  
 
-**Assessment:** The answer correctly partitioned the page (static shell via SSG, dynamic islands via CSR) and the refinement recovered the core hydration mechanism — that visual completion precedes interactivity because the runtime still has to walk the DOM and attach event handlers. The gap is that the response treats hydration cost as a reconciliation step rather than as main-thread JavaScript parse/execute time, which is what specifically explains the 'fast-looking but unresponsive' symptom on mid-tier mobile. The original commit was also not revisited once the hydration mechanism was made explicit.
+**Assessment:** The answer correctly identifies shared-pool saturation as the cross-endpoint coupling and arrives at the bulkhead partition by analogy, with a fair tradeoff statement and a residual-failure named. The refinement reaches for the right constraint (threads share finite compute) but doesn't derive the sizing relationship — why the sum of isolated pools is structurally capped by the same hardware budget, and how Little's Law would set each partition's size from its arrival rate and latency. The gap is in canonical sizing vocabulary and dismissal of structurally different alternatives.
 
 **Literature**
 
-- [remediation] web.dev — Core Web Vitals and Rendering Performance — 'Largest Contentful Paint (LCP)', 'Interaction to Next Paint (INP)', and 'Total Blocking Time' articles — read all three end-to-end — ~45m
-- [growth] React Server Components and Selective Hydration — Connection: once initial hydration cost is understood, RSC + selective hydration is the next-step strategy that lets the SSG-shell-plus-CSR-islands intuition the answer reached be implemented as a single framework primitive. — ~1h
+- [remediation] Release It! Design and Deploy Production-Ready Software (2nd ed.) — Ch. 5 'Stability Patterns' §Bulkheads (pp. 95–106) — pool partitioning, sizing, and interaction with Timeouts and Circuit Breaker patterns — ~45m
+- [remediation] Performance Modeling and Design of Computer Systems — Ch. 6 §Little's Law and applications (pool sizing from arrival rate × service time) — ~40m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q3 · sre · autoscaling-signal-selection · pre 4 → post 4 · ceiling b3 · transitional b4</samp></summary>
+<summary><samp>q3 · ai-llm · prompt-caching · pre 2 → post 2 · ceiling b2 · transitional b3</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A queue-backed worker fleet processes background jobs. The on-call engineer configures Kubernetes HPA to scale on CPU at 70% utilization. Under a burst of traffic, the queue depth grows to tens of thousands of messages before the fleet scales out, and even after scaling, the backlog takes 30 minutes to drain. Explain why CPU is the wrong scaling signal for this workload, what mechanism causes the lag between load arrival and effective capacity (consider pod startup time, image pull, warmup), and what scaling signal you would use instead. Articulate the tradeoff between scaling on a leading indicator (queue depth or arrival rate) vs. a lagging indicator (CPU) — what does each give up?
+**Scenario:** A customer-support AI assistant is built on a large LLM provider (Anthropic/OpenAI) and receives ~2M queries/day. Each query is structured as: [long system prompt with policies, ~4k tokens] + [retrieved knowledge base snippets, ~6k tokens, varies per query] + [user message, ~200 tokens]. The product team enables the provider's prompt caching feature hoping to cut both latency and cost, but observes only a ~5% cost reduction and no meaningful latency improvement. Explain the mechanism by which prompt caching saves work on the provider side (what specifically is being cached and reused at the model-inference layer), the structural property the prompt must have for the cache to hit, and why the current prompt layout above defeats the cache for most queries. Then describe the specific restructuring that would make caching effective, and the tradeoff that restructuring forces.
 
  
 
-**Assessment:** The strongest answer in the run. The mechanism invariant for SRE B3 is fully satisfied: the failure mode is named, the lag contributors are enumerated correctly, a bounded mitigation is committed to (horizontal scale gated on queue depth, with CPU as a coupled secondary signal), and the refinement productively distinguishes the failure modes of using each signal alone. The remaining gap is contract-level: the answer reasons about signals and scaling actions but does not name an SLO or quantify the pod-budget cost of biasing toward the leading indicator, which is what would lift it into B4 territory.
+**Assessment:** The answer correctly diagnoses that variable retrieval content defeats caching and that restructuring should move variability to the end, but the inference-layer mechanism is misnamed: the refinement attributes reuse to 'embeddings' and 'clustering drift,' conflating retrieval-side embedding similarity with the attention-layer KV-cache. The gap is in the canonical mechanism — the KV-cache stores the keys and values produced by self-attention over prefix tokens, the provider reuses them only when the prefix is byte-identical, and reuse skips the prefill forward pass.
 
 **Literature**
 
-- [remediation] Google SRE Book — Practical Alerting and Handling Overload — Ch. 6 'Monitoring Distributed Systems' (SLI/SLO/SLA section) and Ch. 21 'Handling Overload' — read both chapters — ~2h
-- [growth] KEDA — Kubernetes Event-Driven Autoscaling — Connection: the answer independently reasoned to queue-depth-based horizontal scaling; KEDA is the productionised primitive that implements exactly that scaler taxonomy on top of HPA. — ~45m
+- [remediation] Anthropic Documentation — Prompt Caching — §How prompt caching works and §Structuring your prompt — cache breakpoints and prefix-exact-match requirement — ~20m
+- [remediation] Efficient Memory Management for Large Language Model Serving with PagedAttention (vLLM) — §3 Background — KV cache in autoregressive inference (prefill vs decode, what is stored, why prefix sharing yields savings) — ~30m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q4 · backend · api-pagination-consistency · pre 2 → post 1 · ceiling b1 · transitional b2</samp></summary>
+<summary><samp>q4 · sre · pod-disruption-budget · pre 2 → post 2 · ceiling b2 · transitional b3</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A REST API returns a list of orders sorted by created_at descending, paginated with `?page=N&size=50`. Users report that when they scroll quickly, they occasionally see the same order twice on consecutive pages, or skip orders entirely. Explain the mechanism that causes duplicates/skips under offset pagination when the underlying dataset is being mutated concurrently. Describe how keyset (cursor) pagination fixes this, what its implementation requires (consider the sort key and tiebreakers), and what it gives up compared to offset pagination. Commit to one approach for this orders endpoint and justify.
+**Scenario:** A Kubernetes-hosted payment-processing service runs 6 replicas behind a service. The team configures a HorizontalPodAutoscaler (min=6, max=20) and adds a PodDisruptionBudget with `minAvailable: 5`. Two production incidents follow: (1) during a routine cluster upgrade where nodes are cordoned and drained one at a time, the upgrade stalls for 40 minutes; (2) a separate incident where a node hardware-fails and 3 pods of the service simultaneously go unhealthy, taking the service below `minAvailable: 5` — the PDB does not 'protect' against this. Explain why the PDB blocked the cluster upgrade in case (1) (what specific action did it veto, and why), and explain the mechanism that makes the PDB structurally unable to prevent case (2). Commit to what `minAvailable` should be set to given replicas=6 and a desire to survive single-node hardware failure without service degradation, and justify with a brief calculation.
 
  
 
-**Assessment:** The response located the cause of pagination duplicates and skips in client-side rendering desync rather than in concurrent server-side mutation of the underlying row-set between page requests. The refinement was a direct probe at the server-side mechanism — 'what happens on the server side to the ordered result set' — and the answer responded that the server is unaware and uninvolved, which inverts the actual cause. The gap is the offset-pagination mechanism itself: under concurrent inserts/deletes, the absolute position that page N+1's OFFSET resolves against is no longer the same row-set page N saw, which is precisely why keyset pagination (anchored on a stable sort-key + tiebreaker) fixes the problem.
+**Assessment:** The answer treats the PDB as an HPA-coupled scaling gate rather than as an admission check on the Eviction API, and never names the voluntary-vs-involuntary disruption distinction that the question's case (2) is specifically testing. The refinement persists in framing drain as 'readiness probe cycling' rather than as a sequence of Eviction API calls that the PDB-aware admission controller can refuse. The minAvailable=7 commit for replicas=6 is structurally impossible. The gap is in the Eviction API mechanism and the disruption taxonomy.
 
 **Literature**
 
-- [remediation] Use the Index, Luke! — Paging Through Results — 'Paging Through Results' chapter — read the full chapter including 'The Trouble with OFFSET' and 'Seek Method' subsections — ~30m
-- [remediation] Designing Data-Intensive Applications — Ch. 7 'Transactions' §Read Skew and Snapshot Isolation (pp. 233–242) and the consistency-anomaly discussion through 'Lost Updates' (pp. 246) — ~1h 15m
+- [remediation] Kubernetes Documentation — Specifying a Disruption Budget for your Application & API-initiated Eviction — Full page: §Voluntary and involuntary disruptions, §Pod disruption budgets, §How disruption budgets work, plus linked §API-initiated Eviction — ~40m
+- [remediation] Kubernetes Documentation — Safely Drain a Node — Full page: §The eviction API, §kubectl drain behavior — eviction loop and retry-on-PDB-block — ~20m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q5 · security · sql-injection-defense-layers · pre 3 → post 3 · ceiling b2 · transitional b3</samp></summary>
+<summary><samp>q5 · security · server-side-request-forgery · pre 3 → post 3 · ceiling b3 · transitional b4</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A code review surfaces a Python service that builds a SQL query by string-concatenating a user-supplied `sort_column` parameter into an `ORDER BY` clause: `f"SELECT * FROM orders WHERE customer_id = %s ORDER BY {sort_column}"`, with `customer_id` passed as a bound parameter. The author claims 'we're using parameterized queries, so we're safe from SQL injection.' Explain why this claim is wrong, the specific mechanism by which parameterized queries prevent injection (and why that mechanism doesn't extend to identifiers like column names), and the correct defense for the `sort_column` case. Then compare that defense to using an ORM's `order_by` API — what does each give up?
+**Scenario:** An internal corporate tool lets authenticated employees enter a URL and receive a rendered preview of the page (the server fetches the URL, screenshots it, returns the image). A security review flags this as an SSRF vector. The current mitigation proposal is: 'block any URL whose hostname resolves to a private IP range (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 127.0.0.0/8) before fetching.' Explain the specific attack class this mitigation is trying to prevent in a cloud-hosted (AWS/GCP/Azure) deployment — name the concrete asset most commonly targeted and what an attacker gains by reaching it. Then identify the mechanism by which the proposed mitigation can still be bypassed (be specific about what happens between hostname validation and the actual HTTP fetch). Finally, commit to a more robust defense and explain why it closes the gap.
 
  
 
-**Assessment:** The answer correctly identifies the attack surface as the concatenated identifier and commits to a defense-in-depth approach with an allowlist-from-discovery-endpoint as the structural fix — both genuine B3 instincts. The information-leakage observation about exposing column names to the user is a strong adjacent insight. The gap is in articulating *why* parameterized queries are safe in their domain: the database driver sends the query template and the bound values through separate protocol fields so the SQL parser produces a query plan once with parameter placeholders, and bound values can never be re-lexed as syntax. This is the structural property absent for identifiers, and the refinement probe asked for it directly without eliciting it. A secondary gap is residual-risk awareness on ORM order_by APIs and on keeping the allowlist in sync with schema changes.
+**Assessment:** The answer correctly identifies the TOCTOU shape between hostname validation and HTTP-client DNS resolution — the canonical DNS-rebinding bypass — and the refinement makes that gap explicit. The gap is in naming the concrete cloud asset (IMDS at 169.254.169.254 serving instance-role credentials), the IMDSv2 hardening, and the canonical structural fix (resolve once at validation time and pass the resolved IP to the HTTP client, or route all egress through an enforcing proxy) rather than 'defense-in-depth' as a general principle.
 
 **Literature**
 
-- [remediation] OWASP SQL Injection Prevention Cheat Sheet — Defense Option 1 (Prepared Statements) and 'Defense Option 4: Allow-list Input Validation' — read both sections fully — ~30m
-- [remediation] PostgreSQL Documentation — Prepared Statements and Protocol-Level Bind — 'PREPARE' SQL command page and the linked 'Extended Query' protocol-flow subsection in Ch. 55 Frontend/Backend Protocol — ~25m
+- [remediation] OWASP Server-Side Request Forgery Prevention Cheat Sheet — Full cheat sheet: §Case 1 / Case 2 application-layer defenses, §DNS pinning / resolve-once recommendation, §Cloud metadata service callout — ~30m
+- [remediation] AWS Documentation — Use IMDSv2 — §How Instance Metadata Service Version 2 works — session-token PUT/GET protocol and the SSRF-mitigation properties (no GET on /latest/api/token, no preflight, Origin/Host header requirements) — ~20m
 
 </small>
 </details>
