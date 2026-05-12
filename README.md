@@ -20,7 +20,7 @@
  
 
 <samp><b><a href="https://github.com/Myplestory/FortifAIBot">fortifai</a></b>  ·  knowledge hardening protocol  ·  band-calibrated quizzes  ·  <i>web port slated</i></samp><br>
-`discord interface` `dreyfus · ieee swecom · sfia v9 anchored` `industry agnostic pipeline`
+`discord interface` `dreyfus · ieee swecom · sfia v9 anchored` `industry agnostic pipeline` `scoped literature`
 
  
 
