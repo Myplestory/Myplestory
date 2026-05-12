@@ -57,7 +57,7 @@ band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 <details>
 <summary><samp>q1 · ml-engineering · class-imbalance · pre 1 → post 1 · ceiling b1 · transitional b2</samp></summary>
 
-<sub>
+<small>
 
 **Scenario** A team is training a binary classifier to flag fraudulent transactions. The positive class is ~0.3% of the dataset. A junior engineer trains on the raw data and reports 99.7% accuracy. A senior suggests SMOTE oversampling on the training set; another suggests class weighting in the loss; a third suggests downsampling the majority class. Explain the mechanism by which each of these three approaches changes what the model learns, what each gives up (consider calibration of predicted probabilities and sample efficiency), and how you would decide between class-weighting and SMOTE for a downstream system that uses the predicted probability as a score (not just a hard label).
 
@@ -68,13 +68,13 @@ band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 - [remediation] Hands-On Machine Learning with Scikit-Learn, Keras, and TensorFlow (3e) — Ch. 3 'Classification' §Performance Measures and Ch. 4 'Training Models' §Logistic Regression — through end of Ch. 4 — ~5h
 - [remediation] Properly Calibrated Probabilities under Class Imbalance — Entire 'Probability calibration' user-guide page (read fully) — ~1h
 
-</sub>
+</small>
 </details>
 
 <details>
 <summary><samp>q2 · frontend · hydration-cost · pre 3 → post 4 · ceiling b3 · transitional b4</samp></summary>
 
-<sub>
+<small>
 
 **Scenario** A marketing-heavy e-commerce site is choosing between client-side rendering (CSR), server-side rendering (SSR), and static site generation (SSG) for product detail pages. The pages have personalized recommendations below the fold and a price/inventory widget that must reflect live values. Explain how each rendering strategy affects FCP and TTI, what hydration is and why it can make a 'fast-looking' SSR page feel unresponsive on mid-tier mobile, and recommend an approach for this page (commit to one). Identify which parts of the page would be problematic under your chosen strategy and how you'd mitigate them.
 
@@ -85,13 +85,13 @@ band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 - [remediation] web.dev — Core Web Vitals and Rendering Performance — 'Largest Contentful Paint (LCP)', 'Interaction to Next Paint (INP)', and 'Total Blocking Time' articles — read all three end-to-end — ~45m
 - [growth] React Server Components and Selective Hydration — Connection: once initial hydration cost is understood, RSC + selective hydration is the next-step strategy that lets the SSG-shell-plus-CSR-islands intuition the answer reached be implemented as a single framework primitive. — ~1h
 
-</sub>
+</small>
 </details>
 
 <details>
 <summary><samp>q3 · sre · autoscaling-signal-selection · pre 4 → post 4 · ceiling b3 · transitional b4</samp></summary>
 
-<sub>
+<small>
 
 **Scenario** A queue-backed worker fleet processes background jobs. The on-call engineer configures Kubernetes HPA to scale on CPU at 70% utilization. Under a burst of traffic, the queue depth grows to tens of thousands of messages before the fleet scales out, and even after scaling, the backlog takes 30 minutes to drain. Explain why CPU is the wrong scaling signal for this workload, what mechanism causes the lag between load arrival and effective capacity (consider pod startup time, image pull, warmup), and what scaling signal you would use instead. Articulate the tradeoff between scaling on a leading indicator (queue depth or arrival rate) vs. a lagging indicator (CPU) — what does each give up?
 
@@ -102,13 +102,13 @@ band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 - [remediation] Google SRE Book — Practical Alerting and Handling Overload — Ch. 6 'Monitoring Distributed Systems' (SLI/SLO/SLA section) and Ch. 21 'Handling Overload' — read both chapters — ~2h
 - [growth] KEDA — Kubernetes Event-Driven Autoscaling — Connection: the answer independently reasoned to queue-depth-based horizontal scaling; KEDA is the productionised primitive that implements exactly that scaler taxonomy on top of HPA. — ~45m
 
-</sub>
+</small>
 </details>
 
 <details>
 <summary><samp>q4 · backend · api-pagination-consistency · pre 2 → post 1 · ceiling b1 · transitional b2</samp></summary>
 
-<sub>
+<small>
 
 **Scenario** A REST API returns a list of orders sorted by created_at descending, paginated with `?page=N&size=50`. Users report that when they scroll quickly, they occasionally see the same order twice on consecutive pages, or skip orders entirely. Explain the mechanism that causes duplicates/skips under offset pagination when the underlying dataset is being mutated concurrently. Describe how keyset (cursor) pagination fixes this, what its implementation requires (consider the sort key and tiebreakers), and what it gives up compared to offset pagination. Commit to one approach for this orders endpoint and justify.
 
@@ -119,13 +119,13 @@ band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 - [remediation] Use the Index, Luke! — Paging Through Results — 'Paging Through Results' chapter — read the full chapter including 'The Trouble with OFFSET' and 'Seek Method' subsections — ~30m
 - [remediation] Designing Data-Intensive Applications — Ch. 7 'Transactions' §Read Skew and Snapshot Isolation (pp. 233–242) and the consistency-anomaly discussion through 'Lost Updates' (pp. 246) — ~1h 15m
 
-</sub>
+</small>
 </details>
 
 <details>
 <summary><samp>q5 · security · sql-injection-defense-layers · pre 3 → post 3 · ceiling b2 · transitional b3</samp></summary>
 
-<sub>
+<small>
 
 **Scenario** A code review surfaces a Python service that builds a SQL query by string-concatenating a user-supplied `sort_column` parameter into an `ORDER BY` clause: `f"SELECT * FROM orders WHERE customer_id = %s ORDER BY {sort_column}"`, with `customer_id` passed as a bound parameter. The author claims 'we're using parameterized queries, so we're safe from SQL injection.' Explain why this claim is wrong, the specific mechanism by which parameterized queries prevent injection (and why that mechanism doesn't extend to identifiers like column names), and the correct defense for the `sort_column` case. Then compare that defense to using an ORM's `order_by` API — what does each give up?
 
@@ -136,7 +136,7 @@ band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 - [remediation] OWASP SQL Injection Prevention Cheat Sheet — Defense Option 1 (Prepared Statements) and 'Defense Option 4: Allow-list Input Validation' — read both sections fully — ~30m
 - [remediation] PostgreSQL Documentation — Prepared Statements and Protocol-Level Bind — 'PREPARE' SQL command page and the linked 'Extended Query' protocol-flow subsection in Ch. 55 Frontend/Backend Protocol — ~25m
 
-</sub>
+</small>
 </details>
 
 <sub><samp><i>widget regenerated from fortifai's data/session.json via profile_widget.py</i></samp></sub>
