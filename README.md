@@ -20,7 +20,7 @@ interested in governance and provenance primitives, substrate-based, systemic de
 
  
 
-<samp>fortifai latest run</samp>  ·  streak `2d`
+<samp>fortifai latest run</samp>  ·  <samp>streak</samp> `2d`
 
 ```
 session    softeng · b3 / swe                         updated  2026-05-11
@@ -43,6 +43,6 @@ calibrated   dreyfus · ieee swecom · sfia v9
 scale        1.0 (novice)  →  5.0 (strategic)
 ```
 
-<sub>*widget regenerated from fortifai's `data/session.json` via `profile_widget.py`*</sub>
+<sub>*widget regenerated from fortifai's <samp>data/session.json</samp> via <samp>profile_widget.py</samp>*</sub>
 
 <img src="divider.svg" width="100%" height="5" alt="">

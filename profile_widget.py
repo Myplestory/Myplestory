@@ -16,7 +16,7 @@ DEFAULT_README = HERE / "README.md"
 WIDTH = 65
 
 WIDGET_RE = re.compile(
-    r"(### )?fortifai latest run[^\n]*\n```\n.*?\n```",
+    r"(### )?(?:<samp>)?fortifai latest run(?:</samp>)?[^\n]*\n+```\n.*?\n```",
     re.DOTALL,
 )
 
@@ -208,10 +208,10 @@ def render(session: dict, run: dict, canonical_count: int | None = None, streak:
 
     body = "\n".join(lines).rstrip()
     if streak > 0:
-        title = f"fortifai latest run \xa0·\xa0 streak `{streak}d`"
+        title = f"<samp>fortifai latest run</samp> \xa0·\xa0 <samp>streak</samp> `{streak}d`"
     else:
-        title = "fortifai latest run"
-    return f"{title}\n```\n{body}\n```"
+        title = "<samp>fortifai latest run</samp>"
+    return f"{title}\n\n```\n{body}\n```"
 
 
 def splice(readme: str, widget: str) -> str:
