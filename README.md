@@ -9,46 +9,142 @@
 
 <samp>infra oriented engineer across fintech, web3, agentic and dev tooling</samp>  
 <samp>building to solve. auditability, correctness, automation, efficiency as core tenets</samp>  
-<samp>currently engaged in prod-hardened paradigms, load-bearing solutions, ai use in engineering</samp>  
-<samp>interested in governance and provenance primitives, substrate-based, systemic design philosophies</samp>
+<samp>currently building execution infra, evaluation harnesses, ai-augmented engineering</samp>  
+<samp>interested in governance, provenance, verifiable systems and design philosophies</samp>
 
  
 
-<samp><b><a href="https://github.com/PolyEdge-Trade">polyedge</a></b>  ·  fintech infrastructure  ·  prediction market platform  ·  <i>gtm seed slated</i></samp><br>
-`async tokio data plane` `axum serving plane` `react user plane`
+<samp><b><a href="https://github.com/PolyEdge-Trade">polyedge</a></b> <a href="https://polyedge.trade">↗</a>  ·  fintech infrastructure  ·  prediction market platform  ·  <i>gtm seed slated</i></samp><br>
+`tokio-powered data plane` `axum + tower` `react · vercel · cloudflare`
 
  
 
-<samp><b><a href="https://github.com/Myplestory/FortifAIBot">fortifai</a></b>  ·  cognitive infrastructure  ·   technical fluency hardener  ·  <i>web port slated</i></samp><br>
-`discord user plane` `dreyfus, ieee swecom, sfia v9 anchored` `industry agnostic pipeline`
+<samp><b><a href="https://github.com/Myplestory/FortifAIBot">fortifai</a></b>  ·  knowledge hardening protocol  ·  band-calibrated quizzes  ·  <i>web port slated</i></samp><br>
+`discord interface` `dreyfus · ieee swecom · sfia v9 anchored` `industry agnostic pipeline`
 
  
 
-<samp><i>_</i>  ·  agentic infrastructure  ·  <i>tba</i></samp>
+<samp><i>_</i></samp>
 
  
 
-<samp>fortifai latest run</samp>  ·  <samp>streak</samp> `2d`
+<details>
+<summary><samp>fortifai · self-audit loop · streak 2d ▾</samp></summary>
+
+<sub><samp><i>self-audit: scenario-based time-pressured recall, cross-domain breadth, b3-calibrated<br>
+invariant: zero outside assistance. no docs, no ai, no peers. 10m/response, 5m/single refinement<br>
+bar: consistent ≥3 across all 8 swe fields</i></samp></sub>
+
 ```
-session    softeng · b3 / swe                         updated  2026-05-11
-aggregate  2.6 / 5 · competent                        run      1h 6m
-scope      cross-domain · grab-bag · all 8 swe fields bias     uniform
+industry     swe                                  updated         2026-05-11
+scope        cross-domain · 8 field grab-bag      duration        1h 6m
+calibration  b3 "practitioner"                    rotation bias   underindexed-weighted
 
-fields tested (field‑rotation pick)
-  ml-engineering  frontend  sre  backend  security
+                                              b₂  b3  b₄
+q1  ml-engineering     class-imbalance         ₁   1   ₁
+q2  frontend           hydration-cost          ₄   4   ₃
+q3  sre                autoscaling-sig-sel     ₄   4   ₃
+q4  backend            api-pagination          ₂   1   ₁
+q5  security           sql-injection-def       ₃   3   ₂
 
-q1  ml-engineering     class-imbalance              pre  1 →  1   Δ  0
-q2  frontend           hydration-cost               pre  3 →  4   Δ +1
-q3  sre                autoscaling-signal-selection pre  4 →  4   Δ  0
-q4  backend            api-pagination-consistency   pre  2 →  1   Δ -1
-q5  security           sql-injection-defense-layers pre  3 →  3   Δ  0
+strengths    autoscaling-signal-selection · scale-up-lag · cpu-vs-queue-depth-metric · hydration-cost
+gaps         class-imbalance · resampling-strategy · calibration-loss · api-pagination-consistency
 
-strengths   autoscaling-signal-selection · scale-up-lag · cpu-vs-queue-depth-metric · hydration-cost
-gaps        class-imbalance · resampling-strategy · calibration-loss · api-pagination-consistency
-
-calibrated   dreyfus · ieee swecom · sfia v9
-scale        1.0 (novice)  →  5.0 (strategic)
+score (dreyfus)    1 (novice) → 3 (competent) → 5 (mastered)
+band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 ```
+
+<details>
+<summary>q1 · ml-engineering · class-imbalance · pre 1 → post 1 · ceiling b1 · transitional b2 ▾</summary>
+
+**Scenario**
+
+[scenario text from session.json]
+
+**Assessment**
+
+[assessment text from session.json]
+
+**Literature**
+
+- [remediation] [resource — section — ⏱ time]
+- [growth] [resource — section — ⏱ time]
+
+</details>
+
+<details>
+<summary>q2 · frontend · hydration-cost · pre 3 → post 4 · ceiling b3 · transitional b4 ▾</summary>
+
+**Scenario**
+
+[scenario text from session.json]
+
+**Assessment**
+
+[assessment text from session.json]
+
+**Literature**
+
+- [remediation] [resource — section — ⏱ time]
+- [growth] [resource — section — ⏱ time]
+
+</details>
+
+<details>
+<summary>q3 · sre · autoscaling-signal-selection · pre 4 → post 4 · ceiling b3 · transitional b4 ▾</summary>
+
+**Scenario**
+
+[scenario text from session.json]
+
+**Assessment**
+
+[assessment text from session.json]
+
+**Literature**
+
+- [remediation] [resource — section — ⏱ time]
+- [growth] [resource — section — ⏱ time]
+
+</details>
+
+<details>
+<summary>q4 · backend · api-pagination-consistency · pre 2 → post 1 · ceiling b1 · transitional b2 ▾</summary>
+
+**Scenario**
+
+[scenario text from session.json]
+
+**Assessment**
+
+[assessment text from session.json]
+
+**Literature**
+
+- [remediation] [resource — section — ⏱ time]
+- [growth] [resource — section — ⏱ time]
+
+</details>
+
+<details>
+<summary>q5 · security · sql-injection-defense-layers · pre 3 → post 3 · ceiling b2 · transitional b3 ▾</summary>
+
+**Scenario**
+
+[scenario text from session.json]
+
+**Assessment**
+
+[assessment text from session.json]
+
+**Literature**
+
+- [remediation] [resource — section — ⏱ time]
+- [growth] [resource — section — ⏱ time]
+
+</details>
+
 <sub><samp><i>widget regenerated from fortifai's data/session.json via profile_widget.py</i></samp></sub>
+</details>
 
 <img src="divider.svg" width="100%" height="15" alt="">
