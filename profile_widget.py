@@ -283,7 +283,7 @@ def render_literature(q: dict) -> list[str]:
         parts = [f"[{tag}]" if tag else "", title]
         tail = [section] if section else []
         if time_str:
-            tail.append(f"⏱ {time_str}")
+            tail.append(time_str)
         line = " ".join(p for p in parts if p)
         if tail:
             line += " — " + " — ".join(tail)
@@ -303,7 +303,7 @@ def render_question_summary(idx: int, q: dict, calibrated_band: str) -> str:
     )
     if transitional and transitional != ceiling:
         line += f" · transitional {transitional}"
-    return line + " ▾"
+    return line
 
 
 def render_question_details(idx: int, q: dict, calibrated_band: str) -> str:
@@ -314,20 +314,19 @@ def render_question_details(idx: int, q: dict, calibrated_band: str) -> str:
     lit_block = "\n".join(lit_lines) if lit_lines else ""
     return (
         "<details>\n"
-        f"<summary>{summary}</summary>\n"
+        f"<summary><samp>{summary}</samp></summary>\n"
         "\n"
-        "**Scenario**\n"
+        "<sub>\n"
         "\n"
-        f"{scenario}\n"
+        f"**Scenario** {scenario}\n"
         "\n"
-        "**Assessment**\n"
-        "\n"
-        f"{assessment}\n"
+        f"**Assessment** {assessment}\n"
         "\n"
         "**Literature**\n"
         "\n"
         f"{lit_block}\n"
         "\n"
+        "</sub>\n"
         "</details>"
     )
 
@@ -337,13 +336,13 @@ def render_inline_framing(band: str, canonical_count: int | None, industry: str)
     industry_tag = industry or "swe"
     line1 = (
         f"self-audit: scenario-based time-pressured recall, cross-domain breadth, "
-        f"{band}-calibrated."
+        f"{band}-calibrated"
     )
     line2 = (
         "invariant: zero outside assistance. no docs, no ai, no peers. "
-        "10m/response, 5m/single refinement."
+        "10m/response, 5m/single refinement"
     )
-    line3 = f"bar: consistent ≥3 across all {count} {industry_tag} fields."
+    line3 = f"bar: consistent ≥3 across all {count} {industry_tag} fields"
     return (
         "<sub><samp><i>"
         f"{line1}<br>\n"
@@ -359,7 +358,7 @@ def render(session: dict, run: dict, canonical_count: int | None = None, streak:
 
     streak_clause = f" · streak {streak}d" if streak > 0 else ""
     summary = (
-        f"<summary><samp>fortifai · self-audit loop{streak_clause} ▾</samp></summary>"
+        f"<summary><samp>fortifai · self-audit loop{streak_clause}</samp></summary>"
     )
 
     inline = render_inline_framing(band, canonical_count, industry)

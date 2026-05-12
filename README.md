@@ -1,7 +1,7 @@
 <img src="divider.svg" width="100%" height="15" alt="">
 
 <samp>hi, i'm charles</samp><br>
-<samp><i>always open: <a href="https://discord.com/users/myplestory">𝔻</a>  ·  <a href="mailto:myplestorydev@gmail.com">@</a>  ·  <a href="https://myplestory.dev">~</a>  ·  <a href="https://x.com/tormentedos">𝕏</a>  ·  <a href="https://www.linkedin.com/in/myplestorydev/">in</a></i></samp>
+<samp>always open: <a href="https://discord.com/users/myplestory">𝔻</a>  ·  <a href="mailto:myplestorydev@gmail.com">@</a>  ·  <a href="https://myplestory.dev">~</a>  ·  <a href="https://x.com/tormentedos">𝕏</a>  ·  <a href="https://www.linkedin.com/in/myplestorydev/">in</a></i></samp>
 
  
 <img src="https://spotifynowlistening.vercel.app/api/spotify" width="100%" alt=""><br>
@@ -31,9 +31,9 @@
 <details>
 <summary><samp>fortifai · self-audit loop · streak 2d ▾</samp></summary>
 
-<sub><samp><i>self-audit: scenario-based time-pressured recall, cross-domain breadth, b3-calibrated.<br>
-invariant: zero outside assistance. no docs, no ai, no peers. 10m/response, 5m/single refinement.<br>
-bar: consistent ≥3 across all 8 swe fields.</i></samp></sub>
+<sub><samp><i>self-audit: scenario-based time-pressured recall, cross-domain breadth, b3-calibrated<br>
+invariant: zero outside assistance. no docs, no ai, no peers. 10m/response, 5m/single refinement<br>
+bar: consistent ≥3 across all 8 swe fields</i></samp></sub>
 
 ```
 industry     swe                                  updated         2026-05-11
