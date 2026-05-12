@@ -21,8 +21,7 @@
 
  
 
-<img src="https://spotifynowlistening.vercel.app/api/spotify/art" width="96" height="96" alt=""><br>
-<samp>now playing</samp>  ·  <img src="https://spotifynowlistening.vercel.app/api/spotify" height="24" alt="">
+<img src="https://spotifynowlistening.vercel.app/api/spotify" width="720" height="114" alt="">
 
 <samp>fortifai latest run</samp>  ·  <samp>streak</samp> `2d`
 
