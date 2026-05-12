@@ -2,7 +2,7 @@
 
 hi, i'm charles  
   
-always open to talk:    [discord](https://discord.com/users/myplestory)  ·  [twitter](https://x.com/tormentedos)  ·  [email](mailto:myplestorydev@gmail.com)  ·  [site](https://myplestory.dev)
+always open to talk  ·  [discord](https://discord.com/users/myplestory)  ·  [twitter](https://x.com/tormentedos)  ·  [email](mailto:myplestorydev@gmail.com)  ·  [site](https://myplestory.dev)
 
  
 
@@ -12,19 +12,19 @@ currently working on low latency infra, compliance systems, evaluation harnesses
 
  
 
-**[polyedge](https://github.com/PolyEdge-Trade)** [↗](https://polyedge.trade)  ·  fintech infrastructure  ·  prediction market platform  ·  *hardening paid tiers*  
+**[polyedge](https://github.com/PolyEdge-Trade)**  ·  fintech infrastructure  ·  prediction market platform  ·  *hardening paid tiers*  
 
 `tokio-powered data plane` `axum + tower`  `parquet`  `react · vercel · cloudflare`
 
  
 
-**[fortifai](https://github.com/Myplestory/FortifAIBot)**  ·  knowledge hardening protocol · band-calibrated timed quizzes · *personal evaluation harness*  
+**[fortifai](https://github.com/Myplestory/FortifAIBot)**  ·  cognitive infrastructure · LLM-proctored harness · *hardening falsifiability*  
 
-`discord interface` `dreyfus · ieee swecom · sfia v9 anchored` `industry agnostic pipeline` `scoped literature`
+`discord interfaced` `sqlite` `claude` `prompt-cached streaming` `agnostic pipeline`
 
  
 
-*_*
+*___*
 
  
   
@@ -37,11 +37,12 @@ currently working on low latency infra, compliance systems, evaluation harnesses
 
 <sub><samp><i>self-audit: scenario-based time-pressured recall, cross-domain breadth, b3-calibrated<br>
 invariant: zero outside assistance. no docs, no ai, no peers. 10m/response, 5m/single refinement<br>
+breadth: systems/distributed, backend, sre, ml, ai/llm, frontend, data, security<br>
 bar: consistent ≥3 across all 8 swe fields</i></samp></sub>
 
 ```
 industry     swe                                  updated         2026-05-11
-scope        cross-domain · 8 field grab-bag      duration        1h 6m
+scope        cross-domain · grab-bag              duration        1h 6m
 calibration  b3 "practitioner"                    rotation bias   underindexed-weighted
 
                                               b₂  b3  b₄

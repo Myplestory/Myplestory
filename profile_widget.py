@@ -171,8 +171,6 @@ def pad(s: str, width: int) -> str:
 
 
 def scope_value(run: dict, canonical_count: int | None) -> str:
-    if canonical_count:
-        return f"cross-domain · {canonical_count} field grab-bag"
     return "cross-domain · grab-bag"
 
 
@@ -346,12 +344,16 @@ def render_inline_framing(band: str, canonical_count: int | None, industry: str)
         "invariant: zero outside assistance. no docs, no ai, no peers. "
         "10m/response, 5m/single refinement"
     )
-    line3 = f"bar: consistent ≥3 across all {count} {industry_tag} fields"
+    line3 = (
+        "breadth: systems/distributed, backend, sre, ml, ai/llm, frontend, data, security"
+    )
+    line4 = f"bar: consistent ≥3 across all {count} {industry_tag} fields"
     return (
         "<sub><samp><i>"
         f"{line1}<br>\n"
         f"{line2}<br>\n"
-        f"{line3}"
+        f"{line3}<br>\n"
+        f"{line4}"
         "</i></samp></sub>"
     )
 
