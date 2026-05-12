@@ -316,7 +316,7 @@ def render_question_details(idx: int, q: dict, calibrated_band: str) -> str:
         "<details>\n"
         f"<summary><samp>{summary}</samp></summary>\n"
         "\n"
-        "<sub>\n"
+        "<small>\n"
         "\n"
         f"**Scenario** {scenario}\n"
         "\n"
@@ -326,7 +326,7 @@ def render_question_details(idx: int, q: dict, calibrated_band: str) -> str:
         "\n"
         f"{lit_block}\n"
         "\n"
-        "</sub>\n"
+        "</small>\n"
         "</details>"
     )
 
