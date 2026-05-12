@@ -42,4 +42,4 @@ scale        1.0 (novice)  →  5.0 (strategic)
 
 <sub>*widget regenerated from fortifai's <samp>data/session.json</samp> via <samp>profile_widget.py</samp>*</sub>
 
-<img src="divider.svg" width="100%" height="5" alt="">
+<img src="divider.svg" width="100%" height="15" alt="">
