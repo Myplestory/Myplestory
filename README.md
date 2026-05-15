@@ -33,7 +33,7 @@ currently working on low latency infra, compliance systems, evaluation harnesses
  
 
 <details>
-<summary><samp>fortifai · self-audit loop · streak 4d</samp></summary>
+<summary><samp>fortifai · self-audit loop</samp></summary>
 
 <sub><samp><i>self-audit: scenario-based time-pressured recall, cross-domain breadth, b3-calibrated<br>
 invariant: zero outside assistance. no docs, no ai, no peers. 10m/response, 5m/single refinement<br>
@@ -50,8 +50,9 @@ q1  backend            deadlock-detection      ₂   2   ₁
 q2  data-engineering   change-data-capture     ₄   3   ₂
 q3  ml-engineering     feature-scaling         ₂   2   ₁
 q4  frontend           useeffect-dependency    ₃   3   ₂
-q5  systems-distributedfan-out-on-write-vs     ₄   3   ₃
+q5  systems-distributedfan-out-on-write-vs     ₅   4   ₃
 
+strengths    celebrity-problem · fan-out-on-write-vs-read · write-amplification
 gaps         deadlock-detection · feature-scaling · lock-ordering · regularization-sensitivity-to-scale
 
 score (dreyfus)    1 (novice) → 3 (competent) → 5 (mastered)
@@ -69,12 +70,12 @@ band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 
  
 
-**Assessment:** The answer correctly identified the failure domain (deadlock via cycle in a lock-dependency graph) and rightly dismissed the junior's timeout proposal as post-hoc rather than preventive. However, the structural fix proposed — CQRS/materialized views — addresses a read-path concern, while the question is about two concurrent writes contending for row-level locks on the same accounts in opposing orders. The refinement probe directly asked how materialization would prevent conflicting WRITE-lock acquisition, and the response did not recognize the category error: materialized views do not participate in the row-level write locks on base tables that produced the cycle. The gap is the specific primitive that makes a wait-for cycle structurally impossible on the write path when the two row identities are only known at query time.
+**Assessment:** The answer identifies the deadlock domain and correctly rejects the junior's deadlock_timeout proposal as treating the symptom, but the structural-fix step targets the wrong layer: it proposes CQRS/materialized views, which are read-path patterns and do not participate in row-level write locks on the base accounts table that both transfer endpoints contend on. The refinement probe pointed directly at this contradiction — two concurrent writers acquiring locks on the same base rows in conflicting orders — and the response doubled down on read/write separation rather than pivoting to the canonical fix. The unaddressed gap is the primitive that actually closes the wait-for cycle at the row-lock level and the reason it is sufficient under concurrent retries.
 
 **Literature**
 
-- [remediation] PostgreSQL Documentation — Explicit Locking — §13.3 Explicit Locking, especially §13.3.3 Deadlocks — focused read on the canonical lock-ordering recommendation and the wait-for graph detection mechanism — ~25m
-- [remediation] Designing Data-Intensive Applications — Ch. 7 §Preventing Lost Updates → Explicit locking (pp. 242–246) — focused chapter on when pessimistic row-level locking is the right primitive and the operational hazards (deadlock among them) it introduces — ~35m
+- [remediation] PostgreSQL Documentation — Explicit Locking — §13.3 Explicit Locking — focus on §13.3.3 Deadlocks (the wait-for graph, victim selection, and the canonical-acquisition-order guidance) and skim §13.3.2 Row-Level Locks for FOR UPDATE semantics. — ~30m
+- [remediation] Designing Data-Intensive Applications — Ch. 7 §Preventing Lost Updates, specifically the subsection on Explicit Locking (pp. 242–246) and the surrounding discussion of pessimistic vs. optimistic concurrency control. — ~45m
 
 </small>
 </details>
@@ -90,12 +91,12 @@ band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 
  
 
-**Assessment:** The answer correctly diagnosed all three timestamp-watermark failures by attributing them to a single underlying cause — timestamps are not an authoritative ordering primitive — and gestured at log-based replication as the resolution. The gap is at the canonical-primitive layer: which specific artifact in the write-ahead log carries the ordering guarantee, and what database-side construct keeps a consumer's position durable across failover. The refinement explicitly probed this and the answer remained at the analogy level ('WAL or something like that', 'similar to inbox/outbox', 'hashed keys I am assuming') rather than naming the primitive. Closing this gap means learning the named vocabulary (sequence-number-as-position, slot-as-durable-cursor, timeline-as-failover-discriminator) and the operational consequences each one introduces.
+**Assessment:** The answer correctly diagnosed all three watermark failure modes and unified them under the right root cause — that wall-clock timestamps are not authoritative for commit-ordering — and the refinement reached for a substrate-level analogy (inbox/outbox, state transitions logged for failover) that points at the right idea. But when the refinement directly probed for the specific WAL artifact and its failover-survival mechanism, the answer stayed at analogy with explicit terminology hedging ('a WAL or something like that', 'hashed keys I am assuming') rather than committing canonical primitives. The gap is in the named ordering token within the WAL, the durable consumer-position artifact, the failover reconciliation handle, and the operational concerns the question explicitly requested — none of which were surfaced.
 
 **Literature**
 
-- [remediation] Designing Data-Intensive Applications — Ch. 11 §Change Data Capture, pp. 454–457 — covers log-based replication, commit-order vs assignment-order, and why CDC observes the database's authoritative ordering rather than a derived timestamp — ~45m
-- [remediation] Debezium PostgreSQL Connector Documentation — §How the connector works → Replication Slots, §Snapshots, §Failure handling — the specific WAL artifact (LSN), the durability mechanism (replication slot), and timeline_id reconciliation on promotion — ~1h
+- [remediation] Designing Data-Intensive Applications — Ch. 11 §Change Data Capture, pp. 454–457 — covers CDC mechanism, log-as-source-of-truth, and commit-order vs row-state distinction — ~45m
+- [remediation] Debezium PostgreSQL Connector Documentation — §How the connector works → Replication slots, and §Failover and replication slots — focused subsection on LSN persistence, slot retention, and timeline_id reconciliation — ~30m
 
 </small>
 </details>
@@ -111,12 +112,12 @@ band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 
  
 
-**Assessment:** The question tests two named mechanisms: how L2 regularization couples to feature scale in logistic regression, and which property of tree split selection makes magnitude irrelevant in XGBoost. The original response substituted 'floating-point precision and determinism' for both mechanisms — a domain misidentification. The refinement narrowed in on the tree-split property specifically, and the follow-up answered with 'bucketed nodes and clamping', which describes that trees produce discrete partitions but does not identify the property under test. The gap is at the level of the underlying primitives, not articulation: the canonical body-of-knowledge concepts for both halves of the question were never produced.
+**Assessment:** The answer correctly partitioned 'LR is affected, XGBoost is not' but substituted invented framing (float-precision, deterministic data structure, clamping into bucketed nodes) for the two gating mechanisms — the L2 penalty's uniform coupling to coefficient magnitudes for logistic regression, and the rank-ordering property of greedy split selection for tree models. The refinement probe pointed directly at the tree-split mechanism and the response moved further from it rather than toward it, introducing unrelated 'drift mitigation' language. The (c) exception cited latency, which is an operational rather than modeling concern; the canonical exception (distance-based features feeding into a tree, or linear leaves with regularization) was not surfaced, and the keep/remove commit was conditioned on the wrong axis.
 
 **Literature**
 
-- [remediation] An Introduction to Statistical Learning (2nd ed.) — Ch. 6 §6.2 'Shrinkage Methods' (esp. §6.2.1 Ridge Regression — note on standardizing predictors) and Ch. 8 §8.1 'The Basics of Decision Trees' (split selection) — ~1h 30m
-- [remediation] Hands-On Machine Learning with Scikit-Learn, Keras, and TensorFlow (3rd ed.) — Ch. 2 §'Feature Scaling and Transformation' and Ch. 6 §'Decision Trees' — together cover when scaling is required vs. a no-op, and the canonical exception (distance-based features feeding into a tree pipeline) — ~1h
+- [remediation] An Introduction to Statistical Learning (with Applications in Python), 2nd ed. — Ch. 6 §6.2.1 'Ridge Regression' (pp. 237–242) and Ch. 8 §8.1 'The Basics of Decision Trees' (pp. 327–338) — focused chapter on the missing mechanisms — ~2h 15m
+- [remediation] Hands-On Machine Learning with Scikit-Learn, Keras, and TensorFlow, 3rd ed. — Ch. 2 §'Feature Scaling and Transformation' and Ch. 6 §'The CART Training Algorithm' — chapter coverage of when scaling matters in tree pipelines — ~1h 30m
 
 </small>
 </details>
@@ -142,18 +143,18 @@ Users report that when they type quickly, the displayed results sometimes don't 
 
  
 
-**Assessment:** The response framed the race as cumulative input-to-render latency rather than as out-of-order resolution of overlapping in-flight fetches, so part (a) missed the ordering mechanism. Part (b) asserted that debouncing 'bounds but doesn't solve' without articulating the resumed-typing case that re-opens the window. The refinement nudged the answerer toward a staleness flag, but the flag was placed in the dependency array rather than as a closure variable flipped by the effect's cleanup return, and the invariant about which setResults call wins was never stated. The gap is in how React's per-render effect identity and cleanup-before-next-effect ordering combine to neutralize stale closures.
+**Assessment:** The answer framed the race as generalized 'input-to-render latency' rather than the specific mechanism: out-of-order resolution of fetch promises launched by successive effect invocations. Under refinement, the answerer reached the correct primitive family (a flag determining whether the in-flight fetch is still intended) but misplaced it as a dependency-array entry rather than a closure variable flipped by the effect's cleanup return. The gap is in where the cancellation flag lives in the effect's lifecycle and what invariant the cleanup contract guarantees — and the related modern alternative that cancels the request itself rather than just ignoring its response.
 
 **Literature**
 
-- [remediation] Synchronizing with Effects — §'Fetching data' — the verbatim `let ignore = false ... return () => { ignore = true; }` cancellation pattern, plus the surrounding §'How to handle the Effect firing twice in development' and §'Each render has its own Effects' subsections to ground the closure-per-render mental model — ~25m
-- [remediation] A Complete Guide to useEffect — §'Each Render Has Its Own Effects' and §'Each Render Has Its Own… Everything' — establishes that the effect body, its variables, and its cleanup all close over a specific render's `query`, which is the invariant the cancellation flag relies on — ~35m
+- [remediation] Synchronizing with Effects — §Fetching data — the 'let ignore = false ... return () => { ignore = true; }' pattern and the surrounding 'Each effect synchronizes with one render' framing (focused chapter for B3) — ~25m
+- [remediation] A Complete Guide to useEffect — Sections 'Each Render Has Its Own Effects' and 'Each Render Has Its Own… Everything' through 'So What About Cleanup?' (focused chapter for B3) — ~45m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q5 · systems-distributed · fan-out-on-write-vs-read · pre 3 → post 3 · ceiling b2 · transitional b4</samp></summary>
+<summary><samp>q5 · systems-distributed · fan-out-on-write-vs-read · pre 3 → post 4 · ceiling b3 · transitional b4</samp></summary>
 
 <small>
 
@@ -163,12 +164,12 @@ Users report that when they type quickly, the displayed results sometimes don't 
 
  
 
-**Assessment:** The answer correctly identifies write amplification, the celebrity collapse, and commits to a follower-count-threshold hybrid. The refinement supplies the right shape of read-time stitch — fetch precomputed timeline, merge in celebrity posts using an ordering primitive, with a cache + idempotent upsert pipeline behind it. The gap is at the canonical primitive: the response names 'monotonics, hybrid clocks, etc' as a family rather than committing to the specific k-sortable id scheme (snowflake, or composite (timestamp, post_id)) that makes the cross-source merge a true k-way merge without coordination. Operational hazards a proficient practitioner would surface — threshold oscillation, tail-latency SLI under celebrity read amplification — are not named.
+**Assessment:** Pre-refinement the answer identified the cost asymmetry and committed to a hybrid but did not specify how the two sources combine at read time — the central B3 mechanism gap. The refinement closed most of the gap: the answerer named ordering primitives (monotonics, hybrid clocks), described the merge shape, and layered a cache plus idempotent upsert pipeline. What remains missing is the canonical ordering primitive that turns the merge from an O(N) scan-and-insert into a bounded k-way merge over already-sorted streams, plus dismissal of alternatives on a tradeoff axis and operational-hazard framing (threshold oscillation, per-celebrity tail-latency contract).
 
 **Literature**
 
-- [remediation] Designing Data-Intensive Applications — Ch. 1 §Describing Load — Twitter timeline case study (pp. 11–14); Ch. 9 §Ordering Guarantees — Lamport Timestamps and k-sortable ids (pp. 339–352) — ~1h 30m
-- [remediation] Announcing Snowflake — Full post — Snowflake id structure (timestamp-prefixed 64-bit ids) and the k-sortable property — ~15m
+- [remediation] Designing Data-Intensive Applications — Ch. 1 §Describing Load — Twitter timeline case study (pp. 11–14) — ~30m
+- [growth] Announcing Snowflake — k-sortable id design — Connection: the answer's 'attach monotonics/hybrid clocks and scan O(N) to insert' is the right instinct; Snowflake-style k-sortable ids ((timestamp, machine_id, seq)) make the cross-source merge a true k-way merge over already-sorted streams, eliminating the O(N) insertion-sort framing. — ~20m
 
 </small>
 </details>
