@@ -33,7 +33,7 @@ currently working on low latency infra, compliance systems, evaluation harnesses
  
 
 <details>
-<summary><samp>fortifai · self-audit loop</samp></summary>
+<summary><samp>fortifai · self-audit loop · streak 1d</samp></summary>
 
 <sub><samp><i>self-audit: scenario-based time-pressured recall, cross-domain breadth, b3-calibrated<br>
 invariant: zero outside assistance. no docs, no ai, no peers. 10m/response, 5m/single refinement<br>
@@ -41,135 +41,122 @@ breadth: systems/distributed, backend, sre, ml, ai/llm, frontend, data, security
 bar: consistent ≥3 across all 8 swe fields</i></samp></sub>
 
 ```
-industry     swe                                  updated         2026-05-13
-scope        cross-domain · grab-bag              duration        1h 3m
+industry     swe                                  updated         2026-05-15
+scope        cross-domain · grab-bag              duration        1h 5m
 calibration  b3 "practitioner"                    rotation bias   underindexed-weighted
 
                                               b₂  b3  b₄
-q1  backend            deadlock-detection      ₂   2   ₁
-q2  data-engineering   change-data-capture     ₄   3   ₂
-q3  ml-engineering     feature-scaling         ₂   2   ₁
-q4  frontend           useeffect-dependency    ₃   3   ₂
-q5  systems-distributedfan-out-on-write-vs     ₅   4   ₃
-
-strengths    celebrity-problem · fan-out-on-write-vs-read · write-amplification
-gaps         deadlock-detection · feature-scaling · lock-ordering · regularization-sensitivity-to-scale
+q1  systems-distributed                        ₄   3   ₂
+q2  backend                                    ₃   3   ₂
+q3  security                                   ₂   2   ₂
+q4  sre                                        ₄   3   ₃
+q5  ai-llm                                     ₂   2   ₁
 
 score (dreyfus)    1 (novice) → 3 (competent) → 5 (mastered)
 band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 ```
 
 <details>
-<summary><samp>q1 · backend · deadlock-detection · pre 2 → post 2 · ceiling b1</samp></summary>
+<summary><samp>q1 · systems-distributed ·  · pre 2 → post 3 · ceiling b2 · transitional b3</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A payments service runs in PostgreSQL. Two endpoints each take a balance transfer: endpoint A locks account row X then Y (SELECT ... FOR UPDATE in that order), endpoint B locks Y then X. Under load, you see periodic transactions failing with 'deadlock detected' and being rolled back by Postgres after roughly 1 second. A junior engineer proposes increasing `deadlock_timeout` to 10s so 'the deadlocks have time to resolve themselves.' Explain (a) the mechanism by which Postgres detects this deadlock and what happens to the loser transaction, (b) why the junior's proposal does not eliminate deadlocks and what it actually changes, and (c) what structural fix removes the deadlock class entirely and why it works. Be concrete about what 'lock ordering' means at the row level when the two accounts are not known until query time.
+**Scenario:** A multi-tenant analytics SaaS shards customer event ingestion across 16 backend nodes using a simple `hash(tenant_id) % N` scheme. Operations wants to scale to 24 nodes next quarter, and the team has also noticed that two enterprise tenants account for ~40% of total event volume, causing those shards to run hot. A staff engineer proposes switching to consistent hashing with virtual nodes. Explain (a) the specific mechanism by which `hash % N` makes the 16→24 rescale operationally painful and how consistent hashing changes that picture, (b) why virtual nodes are needed on top of a basic consistent-hashing ring rather than just placing each physical node once, and (c) what consistent hashing does NOT solve in this scenario — be concrete about what the team still has to handle for the two heavy tenants.
 
  
 
-**Assessment:** The answer identifies the deadlock domain and correctly rejects the junior's deadlock_timeout proposal as treating the symptom, but the structural-fix step targets the wrong layer: it proposes CQRS/materialized views, which are read-path patterns and do not participate in row-level write locks on the base accounts table that both transfer endpoints contend on. The refinement probe pointed directly at this contradiction — two concurrent writers acquiring locks on the same base rows in conflicting orders — and the response doubled down on read/write separation rather than pivoting to the canonical fix. The unaddressed gap is the primitive that actually closes the wait-for cycle at the row-lock level and the reason it is sufficient under concurrent retries.
+**Assessment:** Part (a) of the answer arrived correctly after the refinement probe: the remapping fraction under modulo is large (the answerer arrived at 33–50% framing, with the actual figure closer to ~94% for 16→24), and consistent hashing produces a more bounded remapping profile. Part (b) is the load-bearing gap — virtual nodes are framed as a hardware-isolation / backpressure-safety construct, which is not their purpose. Their purpose is load smoothing on the hash ring (reducing arc-length variance) and parallelizing rebalancing across many source nodes. Part (c) reaches for generic tail-latency and SRE concerns rather than the concrete and decisive point that consistent hashing cannot subdivide a single key, and the two whale tenants are each a single key. The literature points at the canonical sources for each gap.
 
 **Literature**
 
-- [remediation] PostgreSQL Documentation — Explicit Locking — §13.3 Explicit Locking — focus on §13.3.3 Deadlocks (the wait-for graph, victim selection, and the canonical-acquisition-order guidance) and skim §13.3.2 Row-Level Locks for FOR UPDATE semantics. — ~30m
-- [remediation] Designing Data-Intensive Applications — Ch. 7 §Preventing Lost Updates, specifically the subsection on Explicit Locking (pp. 242–246) and the surrounding discussion of pessimistic vs. optimistic concurrency control. — ~45m
+- [remediation] Designing Data-Intensive Applications — Ch. 6 §Partitioning, 'Partitioning by Hash of Key' and 'Rebalancing Partitions' (pp. 203–218) — ~3h 45m
+- [remediation] Consistent Hashing and Random Trees: Distributed Caching Protocols for Relieving Hot Spots on the World Wide Web — §3 Consistent Hashing — properties of monotonicity, balance, and spread (focused read of §3 only) — ~45m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q2 · data-engineering · change-data-capture · pre 3 → post 3 · ceiling b2 · transitional b3</samp></summary>
+<summary><samp>q2 · backend ·  · pre 2 → post 3 · ceiling b1</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A retail company is replacing nightly batch dumps from their orders OLTP database into the warehouse with a continuous pipeline. They're choosing between (i) a periodic SELECT-based extract using `updated_at > last_high_watermark`, and (ii) log-based CDC reading the database's write-ahead log via Debezium. Explain the mechanism difference (what each approach reads and from where), and walk through three concrete failure modes the timestamp-watermark approach has that log-based CDC does not — at minimum cover: rows updated within the same second as the watermark cutoff, hard deletes, and transactions that commit out of order relative to their `updated_at` assignment. Then name what new operational concerns log-based CDC introduces in exchange.
+**Scenario:** A B2B order-management backend on PostgreSQL needs to publish an `OrderPlaced` event to Kafka every time an order row is inserted. The current code does `INSERT INTO orders ...; producer.send('orders', event); COMMIT;` inside a service method. The team has observed two intermittent bugs: (1) some orders exist in the database but no event was ever consumed downstream, and (2) some downstream consumers process an event whose corresponding order row cannot be found. Explain the underlying mechanism that causes both bugs (be specific about what is and isn't atomic across the two systems), then describe the outbox pattern as a remediation: what table you add, what the write path looks like inside the transaction, and what separate component is responsible for getting rows from that table to Kafka. Finally, identify one tradeoff or operational concern the outbox pattern introduces that the original code did not have.
 
  
 
-**Assessment:** The answer correctly diagnosed all three watermark failure modes and unified them under the right root cause — that wall-clock timestamps are not authoritative for commit-ordering — and the refinement reached for a substrate-level analogy (inbox/outbox, state transitions logged for failover) that points at the right idea. But when the refinement directly probed for the specific WAL artifact and its failover-survival mechanism, the answer stayed at analogy with explicit terminology hedging ('a WAL or something like that', 'hashed keys I am assuming') rather than committing canonical primitives. The gap is in the named ordering token within the WAL, the durable consumer-position artifact, the failover reconciliation handle, and the operational concerns the question explicitly requested — none of which were surfaced.
+**Assessment:** The answer recognizes that the INSERT, the send, and the COMMIT are sequenced incorrectly and, after the refinement, pairs each independent outcome to one of the two observed bugs — which is the right diagnostic shape. The gap is in naming the actual primitive: that Postgres and Kafka are two separate systems with no shared transaction coordinator, so 'atomicity' in the ACID sense was never on offer for the publish step. The outbox sketch reaches for 'LSN or WAL' and a 'materializer', conflating Postgres-internal write-ahead logging with an application-level outbox table written in the same transaction and drained by a relay; the at-least-once nature of that relay, and the corresponding consumer-side idempotency contract, are not surfaced as the substantive tradeoff.
 
 **Literature**
 
-- [remediation] Designing Data-Intensive Applications — Ch. 11 §Change Data Capture, pp. 454–457 — covers CDC mechanism, log-as-source-of-truth, and commit-order vs row-state distinction — ~45m
-- [remediation] Debezium PostgreSQL Connector Documentation — §How the connector works → Replication slots, and §Failover and replication slots — focused subsection on LSN persistence, slot retention, and timeline_id reconciliation — ~30m
+- [remediation] Designing Data-Intensive Applications — Ch. 11 §Keeping Systems in Sync — Dual Writes (pp. 452–457) and §Total Order Broadcast / Idempotent Consumers — ~1h 30m
+- [remediation] Pattern: Transactional Outbox — Full pattern page: 'Problem', 'Solution', 'Example', 'Resulting context' — including the relay variants (polling publisher vs. transaction-log tailing) and the at-least-once delivery consequence — ~25m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q3 · ml-engineering · feature-scaling · pre 2 → post 2 · ceiling b1</samp></summary>
+<summary><samp>q3 · security ·  · pre 2 → post 2 · ceiling b1</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A team is training two models on the same tabular dataset of customer features (age in years, account_balance in dollars ranging 0–10M, num_logins_last_week 0–500): a logistic regression with L2 regularization, and a gradient-boosted tree model (XGBoost). The data scientist applies StandardScaler to features before both. Explain (a) why feature scaling materially changes the logistic regression's behaviour — be specific about which part of the loss function or optimization is affected, (b) why the same scaling has essentially no effect on the XGBoost model's predictions, and (c) one case where scaling would still matter for a tree-based pipeline. Commit to whether you'd keep or remove the scaler from the XGBoost training script and justify.
+**Scenario:** A customer-support web app renders ticket comments authored by end users. The team currently sanitizes input on the way in by stripping `<script>` tags with a regex before storing the comment in the database. A penetration test report flags a stored XSS vulnerability: the tester managed to execute JavaScript by submitting a comment containing `<img src=x onerror=alert(1)>`. Explain (a) why input-time tag stripping is the wrong layer to defend against this and what the correct defense layer is — name the specific mechanism, (b) how the choice of *where the untrusted string is rendered* (HTML body text vs. an HTML attribute vs. inside a `<script>` block vs. a URL) changes what counts as 'correct' encoding, and (c) what a Content Security Policy contributes here that output encoding alone does not, and what CSP does NOT protect against in this scenario.
 
  
 
-**Assessment:** The answer correctly partitioned 'LR is affected, XGBoost is not' but substituted invented framing (float-precision, deterministic data structure, clamping into bucketed nodes) for the two gating mechanisms — the L2 penalty's uniform coupling to coefficient magnitudes for logistic regression, and the rank-ordering property of greedy split selection for tree models. The refinement probe pointed directly at the tree-split mechanism and the response moved further from it rather than toward it, introducing unrelated 'drift mitigation' language. The (c) exception cited latency, which is an operational rather than modeling concern; the canonical exception (distance-based features feeding into a tree, or linear leaves with regularization) was not surfaced, and the keep/remove commit was conditioned on the wrong axis.
+**Assessment:** The response correctly diagnoses that <script>-tag stripping is insufficient, but inverts the canonical defense layer: it identifies input-time validation/encoding as the fix, where the canonical answer is context-aware output encoding applied by the template engine at render time. The per-context sub-question (b) — which encoder applies to HTML body vs. attribute vs. <script> vs. URL — is answered in terms of DOM render order rather than in terms of distinct encoder functions per sink, indicating the underlying model is missing. The refinement softens the wrong-layer claim and adds defense-in-depth language but does not surface output encoding as the gating primitive, and CSP's specific limitations in this scenario (DOM-based XSS, allowlisted-origin exfiltration, non-script injection) are not named — only an irrelevant SSRF exclusion is offered.
 
 **Literature**
 
-- [remediation] An Introduction to Statistical Learning (with Applications in Python), 2nd ed. — Ch. 6 §6.2.1 'Ridge Regression' (pp. 237–242) and Ch. 8 §8.1 'The Basics of Decision Trees' (pp. 327–338) — focused chapter on the missing mechanisms — ~2h 15m
-- [remediation] Hands-On Machine Learning with Scikit-Learn, Keras, and TensorFlow, 3rd ed. — Ch. 2 §'Feature Scaling and Transformation' and Ch. 6 §'The CART Training Algorithm' — chapter coverage of when scaling matters in tree pipelines — ~1h 30m
+- [remediation] OWASP Cross-Site Scripting Prevention Cheat Sheet — §'Output Encoding' and Rules #1–#5 (HTML body, attribute, JavaScript, CSS, URL contexts) — ~30m
+- [remediation] OWASP Content Security Policy Cheat Sheet — §'What CSP is not' and §'Strict CSP' (nonces/hashes, blocking 'unsafe-inline') — ~25m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q4 · frontend · useeffect-dependency-array · pre 2 → post 3 · ceiling b1 · transitional b3</samp></summary>
+<summary><samp>q4 · sre ·  · pre 3 → post 3 · ceiling b2 · transitional b3</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A React component fetches search results based on a `query` prop:
-
-```
-useEffect(() => {
-  fetch(`/search?q=${query}`)
-    .then(r => r.json())
-    .then(data => setResults(data));
-}, [query]);
-```
-
-Users report that when they type quickly, the displayed results sometimes don't match the current query — older results 'win' over newer ones. Explain (a) the mechanism by which this race occurs (be precise about what useEffect does on each `query` change and the ordering of fetch resolutions), (b) why simply debouncing the input reduces but does not eliminate the bug, and (c) commit to a fix using the effect cleanup function and explain what invariant your fix guarantees about which `setResults` call wins.
+**Scenario:** A payment service calls a downstream fraud-scoring API. Both services run behind autoscaled fleets. During a brief 90-second incident in which the fraud API returned 503s on ~30% of requests, the payment service's monitoring showed that even *after* the fraud API fully recovered, payment latency stayed elevated for another ~6 minutes and several payment pods OOMed. The payment client currently retries failed calls up to 3 times with a fixed 200ms delay between attempts. Explain (a) the specific mechanism by which the existing retry policy turned a partial-failure incident into a longer self-inflicted incident — be concrete about what is being amplified and where, (b) what exponential backoff with jitter changes about that mechanism and why jitter (not just exponential growth) is the load-bearing part, and (c) one additional control beyond retry tuning that the payment service should add so a future fraud-API brownout doesn't propagate the same way, and what it gives up.
 
  
 
-**Assessment:** The answer framed the race as generalized 'input-to-render latency' rather than the specific mechanism: out-of-order resolution of fetch promises launched by successive effect invocations. Under refinement, the answerer reached the correct primitive family (a flag determining whether the in-flight fetch is still intended) but misplaced it as a dependency-array entry rather than a closure variable flipped by the effect's cleanup return. The gap is in where the cancellation flag lives in the effect's lifecycle and what invariant the cleanup contract guarantees — and the related modern alternative that cancels the request itself rather than just ignoring its response.
+**Assessment:** The response correctly identifies retry amplification and synchronized cadence as the mechanism, and the refinement gives a defensible reason why randomness (not deterministic spread) is required — coordination-free local decisions can only produce global spread via entropy. Two gaps remain that bound this to B3 score 3. First, the question explicitly asked where the amplification lands; the payment-pod OOM is the load-bearing 'where' (in-flight request state — threads, connection-pool slots, request buffers — held for the full retry duration on the caller side, not just the callee), and this is never named. Second, the requested 'additional control beyond retry tuning' is answered with retry bounding, which is still retry tuning; the canonical beyond-retry controls (circuit breaker, retry budget / token bucket, load shedding with deadline propagation) and their specific tradeoffs are missing.
 
 **Literature**
 
-- [remediation] Synchronizing with Effects — §Fetching data — the 'let ignore = false ... return () => { ignore = true; }' pattern and the surrounding 'Each effect synchronizes with one render' framing (focused chapter for B3) — ~25m
-- [remediation] A Complete Guide to useEffect — Sections 'Each Render Has Its Own Effects' and 'Each Render Has Its Own… Everything' through 'So What About Cleanup?' (focused chapter for B3) — ~45m
+- [remediation] Exponential Backoff and Jitter — Full article (full jitter vs equal jitter vs decorrelated jitter; the simulation showing why exponential growth alone still produces herds) — ~15m
+- [remediation] Site Reliability Engineering — Ch. 22 'Addressing Cascading Failures' §Preventing Server Overload and §Client-Side Throttling; Ch. 21 'Handling Overload' §Retry Budgets — ~45m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q5 · systems-distributed · fan-out-on-write-vs-read · pre 3 → post 4 · ceiling b3 · transitional b4</samp></summary>
+<summary><samp>q5 · ai-llm ·  · pre 2 → post 2 · ceiling b1</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A social-media product is designing the timeline service. Two architectures are on the table: (1) fan-out-on-write — when a user posts, the post id is pushed into a precomputed timeline list for every follower; timeline reads are a single lookup. (2) fan-out-on-read — posts are stored once; a timeline read queries posts from all followed users and merges them. Explain the read-cost vs write-cost tradeoff each makes (be concrete about what 'write amplification' means in approach 1), why approach 1 collapses under a user with 50M followers (the 'celebrity problem'), and commit to a hybrid design that handles the celebrity case. Be specific about which users get which treatment and how the timeline read merges the two sources.
+**Scenario:** A team is building a customer-facing LLM feature with two modes: a 'rewrite this email more politely' mode and a 'brainstorm 5 marketing taglines' mode. They're using the same model and currently call it with `temperature=0.7, top_p=1.0` for both. The rewrite mode occasionally produces outputs that change the user's intended meaning; the brainstorm mode occasionally produces five taglines that all sound nearly identical. Explain (a) what temperature actually does to the next-token probability distribution at the decode step, and what top_p (nucleus sampling) does that is distinct from temperature — they are not redundant, (b) which mode wants which settings and why, given the symptoms described, and (c) why setting `temperature=0` does NOT make outputs fully reproducible across runs in a production API setting — name at least one concrete source of remaining non-determinism.
 
  
 
-**Assessment:** Pre-refinement the answer identified the cost asymmetry and committed to a hybrid but did not specify how the two sources combine at read time — the central B3 mechanism gap. The refinement closed most of the gap: the answerer named ordering primitives (monotonics, hybrid clocks), described the merge shape, and layered a cache plus idempotent upsert pipeline. What remains missing is the canonical ordering primitive that turns the merge from an O(N) scan-and-insert into a bounded k-way merge over already-sorted streams, plus dismissal of alternatives on a tradeoff axis and operational-hazard framing (threshold oscillation, per-celebrity tail-latency contract).
+**Assessment:** The answer treats decode-time sampling as a transformer-internal phenomenon (gradients, matmul, activation) rather than as a post-logit reshape-and-truncate pipeline applied at the sampling step. The mode-to-setting recommendation is inverted relative to the symptoms, and the temperature=0 sub-question is answered with a categorical misconception (that it disables the model) rather than an analysis of why greedy decoding still varies in a real API. The refinement probe narrowed in on exactly the right gap — the operation temperature performs on the logit vector — and the answer did not converge.
 
 **Literature**
 
-- [remediation] Designing Data-Intensive Applications — Ch. 1 §Describing Load — Twitter timeline case study (pp. 11–14) — ~30m
-- [growth] Announcing Snowflake — k-sortable id design — Connection: the answer's 'attach monotonics/hybrid clocks and scan O(N) to insert' is the right instinct; Snowflake-style k-sortable ids ((timestamp, machine_id, seq)) make the cross-source merge a true k-way merge over already-sorted streams, eliminating the O(N) insertion-sort framing. — ~20m
+- [remediation] The Curious Case of Neural Text Degeneration — §3 'Nucleus Sampling' and §2 'Background: Decoding from Language Models' — focused chapter covering temperature scaling of logits, top-k, and the nucleus (top-p) truncation procedure end-to-end — ~45m
+- [remediation] Defeating Nondeterminism in LLM Inference — Full post — sections 'The Hypothesis' through 'Batch Invariance' — covers why greedy/temp=0 is not bitwise reproducible (batch-dependent floating-point reductions, kernel non-associativity) — ~30m
 
 </small>
 </details>
