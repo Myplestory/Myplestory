@@ -33,7 +33,7 @@ currently working on low latency infra, compliance systems, evaluation harnesses
  
 
 <details>
-<summary><samp>fortifai · self-audit loop · streak 2d</samp></summary>
+<summary><samp>fortifai · self-audit loop · streak 3d</samp></summary>
 
 <sub><samp><i>self-audit: scenario-based time-pressured recall, cross-domain breadth, b3-calibrated<br>
 invariant: zero outside assistance. no docs, no ai, no peers. 10m/response, 5m/single refinement<br>
@@ -41,124 +41,124 @@ breadth: systems/distributed, backend, sre, ml, ai/llm, frontend, data, security
 bar: consistent ≥3 across all 8 swe fields</i></samp></sub>
 
 ```
-industry     swe                                  updated         2026-05-16
-scope        cross-domain · grab-bag              duration        1h 0m
+industry     swe                                  updated         2026-05-17
+scope        cross-domain · grab-bag              duration        48m 41s
 calibration  b3 "practitioner"                    rotation bias   underindexed-weighted
 
                                               b₂  b3  b₄
-q1  frontend           virtualized-list        ₃   3   ₂
-q2  backend            unique-constraint-race  ₂   2   ₁
-q3  data-engineering   small-files-problem     ₃   2   ₂
-q4  sre                graceful-shutdown       ₃   3   ₂
-q5  ml-engineering     one-hot-vs-target       ₂   2   ₁
+q1  ml-engineering     feature-importance      ₂   2   ₁
+q2  ai-llm             function-calling-loop   ₃   3   ₂
+q3  security           oauth-authorization     ₂   2   ₁
+q4  data-engineering   data-skew-in-shuffle    ₂   2   ₂
+q5  systems-distributedleader-election         ₃   3   ₂
 
-gaps         compaction-strategy · high-cardinality-categorical · insert-on-conflict · object-store-listing-cost
+gaps         authorization-code-interception · correlated-feature-importance-split · data-skew-in-shuffle · feature-importance-interpretation
 
 score (dreyfus)    1 (novice) → 3 (competent) → 5 (mastered)
 band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 ```
 
 <details>
-<summary><samp>q1 · frontend · virtualized-list · pre 2 → post 3 · ceiling b1 · transitional b2</samp></summary>
+<summary><samp>q1 · ml-engineering · feature-importance-interpretation · pre 2 → post 2 · ceiling b1</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A team is building a customer support dashboard that displays an activity feed of up to 50,000 events for a single account. The current implementation renders all rows into the DOM at mount time inside a scrollable container. Initial render takes 4 seconds on a mid-range laptop, scrolling is janky, and memory usage spikes. A junior engineer proposes 'just use a virtualized list library like react-window or TanStack Virtual'. Explain the mechanism by which list virtualization fixes the performance problem (what changes about what the browser is doing). Then describe two concrete tradeoffs or correctness hazards virtualization introduces that the engineer must handle — be specific about what breaks and why.
+**Scenario:** A data scientist at an insurance pricing startup trains an XGBoost model to predict claim severity. They report to the product team that the top three features by gain importance are policy_tenure_days, policy_tenure_months, and policy_tenure_years (all derived from the same policyholder start date). The product team wants to drop policy_tenure_months and policy_tenure_years to simplify the feature pipeline, citing that gain importance shows they're 'almost as predictive' as policy_tenure_days. Explain (a) what gain importance is actually measuring and why it produces this misleading picture when correlated/redundant features are present, (b) what would happen mechanically if you dropped two of the three features and retrained, and (c) what alternative importance method would give a more trustworthy answer to the product team's question, and what it measures differently.
 
  
 
-**Assessment:** The original response framed virtualization as 'lazy loading vs eager loading' and as decoupling DOM mount from event rendering, which is not the operative mechanism — the browser's cost scales with DOM node count, and virtualization works by keeping only a viewport-sized window of real row nodes in the DOM at any moment. Under refinement the answerer reached DOM node count as the lever but landed on an incorrect model in which the virtualized region is treated as a single leaf node and rendering is 'deferred' outside the DOM, rather than understanding that a small set (~tens) of recycled row nodes is actually mounted and absolutely positioned within a spacer of full scroll height. The two tradeoffs offered — in-use sync/reconciliation latency and aggregation-correctness from data not being eagerly loaded — are not virtualization hazards (data still lives in JS state; only DOM nodes are windowed), and the canonical hazards in this space (variable row height measurement, accessibility and find-in-page semantics, focus loss on unmount) are absent. The gap is in the precise node-budget primitive and in the user-observable consequences that distinguish a windowed list from the alternatives.
+**Assessment:** The answer recognized that correlation among the three tenure features is the source of the misleading gain picture, but did not state what gain actually counts (cumulative loss reduction at splits where the feature is chosen), did not predict the correct mechanical outcome of dropping two of three redundant features (performance is preserved; gain consolidates on the survivor), and named no concrete alternative importance method. The refinement probe pointed directly at the split-selection mechanism; the response surfaced the phrase 'split points' but did not connect it to per-node greedy choice across near-identical features, and the (b) prediction was not revised. The gap is in the gain-attribution mechanism and the catalog of held-out-evaluation-based alternatives.
 
 **Literature**
 
-- [remediation] react-window — Official Documentation and How It Works — 'How does it work?' overview + FixedSizeList API page — focused chapter on the windowing primitive: itemCount, itemSize, overscanCount, and the inner/outer container structure (~1 chapter equivalent) — ~45m
-- [remediation] Rendering large lists with react-virtuoso / Inclusive Components: Tooltips & Toggletips and 'A Todo List' patterns for a11y in virtualized contexts — Virtuoso 'Troubleshooting & Common Pitfalls' + the 'Variable Sized Items' guide — the specific subsection on measurement, scroll-jump, and accessibility caveats with virtualized lists — ~30m
+- [remediation] Interpretable Machine Learning — Ch. 8.5 'Permutation Feature Importance' — full chapter, including the discussion of correlated features — ~45m
+- [remediation] XGBoost Documentation — Python API — Booster.get_score importance_type parameter: 'gain', 'weight', 'cover', 'total_gain', 'total_cover' — ~15m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q2 · backend · unique-constraint-race · pre 2 → post 2 · ceiling b1</samp></summary>
+<summary><samp>q2 · ai-llm · function-calling-loop · pre 3 → post 3 · ceiling b1 · transitional b2</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A signup endpoint creates a User row with a unique email constraint. Under load testing, the team observes occasional 500 errors with a Postgres unique_violation (SQLSTATE 23505) instead of the expected 'email already taken' 409 response. The current code does: `SELECT WHERE email = $1` — if empty, `INSERT`. Explain why this pattern produces the unique_violation under concurrency even though the SELECT returned nothing. Then commit to a fix that is correct under concurrency, name the Postgres primitive that makes it correct, and articulate why your fix preserves the invariant that two concurrent signups for the same email cannot both succeed.
+**Scenario:** A SaaS support assistant is built as an LLM agent with three tools: search_kb(query), get_ticket(ticket_id), and create_ticket(payload). The current loop is: send prompt → if model returns a tool call, execute it → append tool result to messages → call model again → repeat until model returns a final text response. In production, two failure modes appear: (1) when a tool raises an exception, the agent often loops calling the same tool with the same arguments 5-10 times before giving up, and (2) occasionally the model emits a tool call with a malformed argument (e.g., ticket_id as a sentence rather than an id), the tool errors, and the model 'apologizes' to the user without retrying. Explain (a) why the current loop produces these behaviors — what the model is actually seeing in its context on each iteration, (b) two specific changes to how tool results (especially errors) are formatted and fed back that would change this behavior, and (c) what loop-level control you would add and why it is preferable to relying on the model to self-terminate.
 
  
 
-**Assessment:** The answer reached for the right surface recipe (INSERT ... ON CONFLICT) but the refinement probe revealed that the recipe was not anchored to the mechanism that makes it correct. The pivot to inbox/outbox and to ACID-acronym framing under pressure indicates pattern-matching against memorized labels rather than reasoning about what Postgres actually does between the read and write phases of two concurrent transactions. The gap is in the storage-engine primitive that serializes concurrent inserts on the same key value, and in how Read Committed isolation treats non-existent rows.
+**Assessment:** The proposed remediations — schema-bounded error contracts, retry budgets, and a deterministic outer controller with hash-based loop detection — are on-mechanism and would in fact constrain both failure modes. What is missing, and what the refinement specifically surfaced, is an accurate model of what the LLM actually sees on each iteration of an agent loop and why error formatting is itself a prompt-engineering decision. The refinement attributed the looping behavior to KV-cache token persistence influencing generation, which conflates an inference-layer prefill optimization with the conditioning mechanism that actually drives repeated tool calls. The gap is in naming the conditioning primitive — what is in the message array on turn N — and connecting tool-result shape to next-token distribution.
 
 **Literature**
 
-- [remediation] PostgreSQL Documentation — INSERT ... ON CONFLICT — §ON CONFLICT Clause — specifically the paragraphs on atomicity guarantees, the role of the unique or exclusion index, and the use of RETURNING to distinguish inserted vs conflicting rows — ~20m
-- [remediation] Designing Data-Intensive Applications — Ch. 7 §Preventing Lost Updates and §Write Skew and Phantoms (pp. 242–251) — covers compare-and-set, atomic write operations, materializing conflicts via unique constraints, and why SERIALIZABLE is the heavier alternative — ~1h 0m
+- [remediation] Building Effective Agents — §Tool design and §Agent control loops — full sections on how tool definitions, error messages, and orchestration shape model behavior — ~30m
+- [remediation] vLLM: Easy, Fast, and Cheap LLM Serving with PagedAttention — §3 Background — KV cache, prefill, and prefix sharing (single section, ~3 pages) — ~30m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q3 · data-engineering · small-files-problem · pre 2 → post 2 · ceiling b1</samp></summary>
+<summary><samp>q3 · security · oauth-authorization-code-flow · pre 2 → post 2 · ceiling b1</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A streaming pipeline writes records to a partitioned table on S3 (Parquet, partitioned by event_date) every 60 seconds. After 6 months, downstream Spark queries that used to take 30 seconds now take 12 minutes, even though total data volume has only doubled. Investigation shows each daily partition contains ~1,440 small Parquet files averaging 2 MB each. Explain the mechanism by which small files degrade query performance on object-stored partitioned tables — be specific about what costs scale with file count rather than data volume. Then describe a compaction strategy that addresses this, and articulate the tradeoff you accept by running it (what gets worse, or what new failure mode you introduce).
+**Scenario:** A mobile app for a retail loyalty program uses OAuth 2.0 to authenticate users against the company's identity provider. The original implementation used the authorization code flow with a static client_secret embedded in the mobile binary. A security review flagged this and the team migrated to authorization code flow with PKCE, removing the client_secret entirely. A junior engineer asks: 'If we just removed the secret and added a code_verifier/code_challenge, what attack are we actually preventing? The authorization code is still in the redirect URL either way.' Explain (a) the specific attack PKCE prevents that the static-secret flow could not defend against on a mobile device, (b) the mechanism by which code_challenge (sent at /authorize) and code_verifier (sent at /token) bind the two requests together so an interceptor of the code cannot redeem it, and (c) why simply keeping the client_secret would not have closed this gap on a mobile client.
 
  
 
-**Assessment:** The answer recognized the small-files problem and proposed compaction in the right direction, but when the refinement probe asked the load-bearing B3 question — which specific object-store operations scale with file count and why — the response retreated to an abstract 'object metadata vs file hierarchy' analogy rather than naming the concrete per-file costs that distinguish S3 from a local filesystem. The compaction description also conflated batch compaction with at-ingest consolidation, and the tradeoff analysis enumerated generic pipeline risks rather than the specific tradeoffs the question asked for. The gap is in the canonical primitives of object-store access cost and the operational shape of a compaction job.
+**Assessment:** The answer correctly identifies that mobile binaries cannot hold a meaningful secret, but misidentifies what PKCE actually does. The mechanism is not temporal binding, not MFA-based provenance, and not a public/private keypair exchange — it is a one-way hash binding between two values, one sent on the front channel and one on the back channel. The refinement probe targeted the cryptographic property directly and the response committed to the wrong cryptographic family, which is the diagnostic gap. The threat being prevented is also specific to the mobile platform's redirect-handling model and is not captured by general 'attack surface reduction' language.
 
 **Literature**
 
-- [remediation] Designing Data-Intensive Applications — Ch. 3 §Column-Oriented Storage (pp. 95–101) and Ch. 10 §Distributed Filesystems vs Object Stores — ~1h 30m
-- [remediation] Apache Iceberg Documentation — Maintenance — §Compacting Data Files (rewrite_data_files) and §Expire Snapshots — ~25m
+- [remediation] RFC 7636: Proof Key for Code Exchange by OAuth Public Clients — §1 Introduction, §1.1 Protocol Flow, §4.1–§4.6 (code_verifier construction, code_challenge derivation, S256 method, server-side verification) — ~45m
+- [remediation] OAuth 2.0 for Native Apps (BCP 212 / RFC 8252) — §8.1 Protecting the Authorization Code, §7 Receiving the Authorization Response (custom URI schemes, claimed https schemes, loopback interface) — ~30m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q4 · sre · graceful-shutdown · pre 2 → post 3 · ceiling b1 · transitional b2</samp></summary>
+<summary><samp>q4 · data-engineering · data-skew-in-shuffle · pre 2 → post 2 · ceiling b1</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A stateless HTTP service running in Kubernetes shows a spike in 502s from the ingress every time a deployment rolls out, even when the new version is healthy. The team has readiness probes configured correctly. Explain the lifecycle mechanism that causes the 502s during pod termination — what specifically happens between the moment Kubernetes decides to terminate a pod and the moment the kube-proxy/endpoints controller stops sending it traffic, and why in-flight or newly-arriving connections fail. Then describe the canonical fix (name the specific signals and hooks involved) and articulate the tradeoff: what does your fix cost, and what bounds it?
+**Scenario:** A daily Spark job joins a clickstream fact table (~2B rows/day) against a customer dimension (~50M rows) on customer_id, then aggregates clicks-per-customer-per-day. The job runs for 45 minutes total, but the Spark UI shows 199 of 200 shuffle tasks finishing within 3 minutes while one task runs for 42 minutes processing ~30% of the data. Investigation shows that customer_id = 0 is used as a sentinel for unauthenticated/anonymous traffic and accounts for roughly 600M rows/day. Explain (a) the precise mechanism by which a single skewed key produces this one-task-dominates pattern in a shuffle-based hash join, (b) the 'salting' technique for mitigating this — what you change on each side of the join and why it redistributes the work — and (c) one tradeoff or correctness concern the salting approach introduces that did not exist in the naive join.
 
  
 
-**Assessment:** The original response identified the rollout lifecycle as the failure domain and intuited that there is a gap between the terminate decision and traffic cessation, but invented a multi-step lifecycle in place of the actual Kubernetes primitives and proposed a custom 'termination signal status' rather than recognizing the existing mechanism. The refinement probe pulled out SIGTERM correctly and the right shape of fix (delay before the signal), but the specific pod-spec hook and — more importantly — the propagation race between Endpoints/EndpointSlice updates and SIGTERM delivery were never named. The gap is in the two-flow concurrency model that makes the canonical fix bounded by endpoint propagation latency on one side and terminationGracePeriodSeconds on the other.
+**Assessment:** The answer recognised shuffle skew and named salting as the mitigation, but mis-attributed the mechanism to a defect in the hash function rather than to the deliberate co-location property that every hash join depends on. The proposed salting variant — hashing only the suffix of customer_id while keeping a deterministic prefix — would route all sentinel rows to the same reducer and not relieve the skew, indicating the redistribution logic was not internalised. The refinement directly probed this assumption; the response acknowledged the assumption could be wrong but pivoted to an upstream schema suggestion rather than correcting the join-time mechanism, and never described the paired fact-side key augmentation with dim-side row replication that makes salting work. The gap is in the partitioner's contract and how a composite key changes its input distribution.
 
 **Literature**
 
-- [remediation] Kubernetes Documentation — Pod Lifecycle: Termination of Pods — §Pod termination and §Container hooks (preStop) — the two-flow diagram: API-server marks pod Terminating → Endpoints controller removes pod → kube-proxy on every node reprograms iptables, IN PARALLEL with kubelet running preStop then sending SIGTERM to PID 1, then SIGKILL after terminationGracePeriodSeconds — ~25m
-- [remediation] Graceful shutdown and zero downtime deployments in Kubernetes — Full article — walks through why pods receive traffic after SIGTERM, the preStop sleep pattern, terminationGracePeriodSeconds tuning, and the SIGTERM handler the app itself must implement — ~30m
+- [remediation] High Performance Spark — Ch. 4 §Joins (SQL & Core) — 'Speeding Up Joins by Assigning a Known Sort Order' and 'Skewed Data' subsections (the canonical chapter on hash-join mechanics and the salting pattern with both fact-side key augmentation and dim-side replication worked through end-to-end) — ~1h 15m
+- [remediation] Apache Spark Documentation — Adaptive Query Execution — §Optimizing Skew Join — spark.sql.adaptive.skewJoin.enabled and the partition-splitting mechanism AQE applies automatically when one shuffle partition is N× larger than the median — ~20m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q5 · ml-engineering · one-hot-vs-target-encoding · pre 2 → post 2 · ceiling b1</samp></summary>
+<summary><samp>q5 · systems-distributed · leader-election-fencing-token · pre 2 → post 3 · ceiling b1</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A team is training a gradient-boosted tree model (LightGBM) to predict 30-day customer churn. One of the features is `zip_code` with ~30,000 distinct values. A teammate proposes target encoding (replace each zip with the mean churn rate of training rows in that zip) to avoid the dimensionality blow-up of one-hot encoding. Explain why one-hot encoding is a poor fit for this feature in a tree model — be specific about what tree-split mechanics do with one-hot columns at this cardinality. Then explain the specific leakage hazard target encoding introduces if implemented naively, and name the concrete technique that prevents that leakage while preserving the encoding's signal.
+**Scenario:** A distributed job scheduler uses a coordination service (e.g., ZooKeeper/etcd) to elect a single leader that holds an exclusive lease on writing to a shared object store. Leases expire after 30 seconds and are renewed every 10 seconds. An on-call engineer reports a corruption incident: leader A experienced a 45-second GC pause, leader B was elected and started writing during the pause, then leader A woke up, still believed it held the lease (its in-process clock said only a moment had passed), and wrote stale data over B's writes. Explain (a) why a lease-and-clock-only design is insufficient to prevent this class of bug regardless of how short you make the lease, (b) what a fencing token is, the monotonicity property it must have, and how the object store must use it to make A's late write a no-op, and (c) what specifically must change on the storage side — not just the client — for fencing to actually work.
 
  
 
-**Assessment:** The answer correctly senses that encoding can leak information and that one-hot interacts badly with tree split mechanics, but the specific primitives are not held: the per-column gain-ranking behavior of LightGBM's split search at high cardinality is not named, the leakage family is misidentified (described as 'look-ahead bias,' which is temporal leakage, not target leakage), and the canonical mitigation — out-of-fold / K-fold target encoding — is replaced with a general 'scope the information, process sequentially' framing. The refinement probe pointed directly at split-candidate selection across columns and the response did not narrow toward the mechanism. The gap is in the concrete vocabulary of categorical handling in GBDTs and in the standard leakage-mitigation pattern for mean-target encoding.
+**Assessment:** The answer identifies the right problem family (stale-writer corruption, token-gated writes, storage-side enforcement at the ingest boundary) but the core comparison mechanism is mis-specified: the refinement proposes a bitwise-xor or diverging-character index, where the fencing protocol requires a monotonic greater-than check against a durably-held high-water mark. The reason a lease-and-clock-only design fails is also mis-rooted in a TOCTOU/polling argument rather than in the non-authoritativeness of the deposed leader's local clock-belief after an unbounded pause. The 'A wakes up, sees its writes are late, and drops itself' framing inverts the design — A does not need to discover anything; the storage rejects A's write unconditionally based on token order. The storage-side requirements (durable max-token, atomic compare-and-write, behavior across restart) are gestured at but not derived.
 
 **Literature**
 
-- [remediation] LightGBM Documentation — Advanced Topics: Optimal Split for Categorical Features — Advanced Topics §Categorical Feature Support and §Optimal Split for Categorical Features — the one focused section explaining why one-hot is inferior at high cardinality and how LightGBM's native handling (Fisher 1958 partition over category statistics) replaces it. — ~20m
-- [remediation] Feature Engineering for Machine Learning — Chapter 5 §Categorical Variables — specifically the subsection on target/mean encoding and out-of-fold computation, plus the smoothed (Bayesian) variant for low-count categories. — ~45m
+- [remediation] Designing Data-Intensive Applications — Ch. 8 §The Truth Is Defined by the Majority — 'Fencing tokens', pp. 301–304 — ~45m
+- [remediation] How to do distributed locking — Section 'Making the lock safe with fencing' — ~25m
 
 </small>
 </details>
