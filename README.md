@@ -47,10 +47,10 @@ calibration  b3 "practitioner"                    rotation bias   underindexed-w
 
                                               b₂  b3  b₄
 q1  ml-engineering     feature-importance      ₂   2   ₁
-q2  ai-llm             function-calling-loop   ₃   3   ₂
+q2  ai-llm             function-calling-loop   ₄   3   ₂
 q3  security           oauth-authorization     ₂   2   ₁
-q4  data-engineering   data-skew-in-shuffle    ₂   2   ₂
-q5  systems-distributedleader-election         ₃   3   ₂
+q4  data-engineering   data-skew-in-shuffle    ₂   2   ₁
+q5  systems-distributedleader-election         ₄   3   ₂
 
 gaps         authorization-code-interception · correlated-feature-importance-split · data-skew-in-shuffle · feature-importance-interpretation
 
@@ -69,18 +69,18 @@ band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 
  
 
-**Assessment:** The answer recognized that correlation among the three tenure features is the source of the misleading gain picture, but did not state what gain actually counts (cumulative loss reduction at splits where the feature is chosen), did not predict the correct mechanical outcome of dropping two of three redundant features (performance is preserved; gain consolidates on the survivor), and named no concrete alternative importance method. The refinement probe pointed directly at the split-selection mechanism; the response surfaced the phrase 'split points' but did not connect it to per-node greedy choice across near-identical features, and the (b) prediction was not revised. The gap is in the gain-attribution mechanism and the catalog of held-out-evaluation-based alternatives.
+**Assessment:** The answer recognized that correlation among the three tenure features distorts the importance picture but did not produce the mechanism: what gain is actually summing, what tree-building decision causes the fragmentation, what would mechanically happen to performance after dropping the redundant columns, and which named alternative method gives a more trustworthy answer. The refinement probe pointed directly at the split-selection step and surfaced the phrase 'split points', but did not connect it to per-node greedy candidate evaluation across near-identical features. The gap is in the formal definition of gain attribution and the canonical alternative-method literature.
 
 **Literature**
 
-- [remediation] Interpretable Machine Learning — Ch. 8.5 'Permutation Feature Importance' — full chapter, including the discussion of correlated features — ~45m
-- [remediation] XGBoost Documentation — Python API — Booster.get_score importance_type parameter: 'gain', 'weight', 'cover', 'total_gain', 'total_cover' — ~15m
+- [remediation] Introduction to Boosted Trees (XGBoost documentation) — §The Structure Score and §Learn the tree structure — definition of gain as G²/(H+λ) and how it is accumulated per feature across splits; plus Python API Booster.get_score importance_type='gain' / 'total_gain' — ~45m
+- [remediation] Interpretable Machine Learning — Ch. 8.5 Permutation Feature Importance — definition, correlated-feature failure mode, and the hierarchical-clustering remedy; cross-read with the scikit-learn example 'Permutation Importance with Multicollinear or Correlated Features' — ~50m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q2 · ai-llm · function-calling-loop · pre 3 → post 3 · ceiling b1 · transitional b2</samp></summary>
+<summary><samp>q2 · ai-llm · function-calling-loop · pre 3 → post 3 · ceiling b2 · transitional b3</samp></summary>
 
 <small>
 
@@ -90,12 +90,12 @@ band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 
  
 
-**Assessment:** The proposed remediations — schema-bounded error contracts, retry budgets, and a deterministic outer controller with hash-based loop detection — are on-mechanism and would in fact constrain both failure modes. What is missing, and what the refinement specifically surfaced, is an accurate model of what the LLM actually sees on each iteration of an agent loop and why error formatting is itself a prompt-engineering decision. The refinement attributed the looping behavior to KV-cache token persistence influencing generation, which conflates an inference-layer prefill optimization with the conditioning mechanism that actually drives repeated tool calls. The gap is in naming the conditioning primitive — what is in the message array on turn N — and connecting tool-result shape to next-token distribution.
+**Assessment:** The answer correctly proposes the right family of remediations — structured error envelopes, bounded retries, and a deterministic outer controller with argument-hash dedup — and frames the orchestration boundary correctly as 'move control off the non-deterministic model.' The refinement targeted the underlying primitive (what is the model actually seeing on iteration N+1?) and the answer attributed the repeated-call behavior to LLM-side token caching rather than to the cumulative message history conditioning the next-turn distribution. The gap is in the conditioning-vs-caching distinction: understanding that the tool result message is appended to history and re-fed on every call, and that this history (not any cache) is what shapes the next token choice.
 
 **Literature**
 
-- [remediation] Building Effective Agents — §Tool design and §Agent control loops — full sections on how tool definitions, error messages, and orchestration shape model behavior — ~30m
-- [remediation] vLLM: Easy, Fast, and Cheap LLM Serving with PagedAttention — §3 Background — KV cache, prefill, and prefix sharing (single section, ~3 pages) — ~30m
+- [remediation] Building Effective Agents — §Tool use and §Agents — specifically the description of how tool results are appended to the message array and re-fed as input on each iteration of the agent loop — ~20m
+- [remediation] vLLM: Efficient Memory Management for Large Language Model Serving with PagedAttention — §3 Background — KV cache and prefix sharing (~3 pages) — ~30m
 
 </small>
 </details>
@@ -111,12 +111,12 @@ band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 
  
 
-**Assessment:** The answer correctly identifies that mobile binaries cannot hold a meaningful secret, but misidentifies what PKCE actually does. The mechanism is not temporal binding, not MFA-based provenance, and not a public/private keypair exchange — it is a one-way hash binding between two values, one sent on the front channel and one on the back channel. The refinement probe targeted the cryptographic property directly and the response committed to the wrong cryptographic family, which is the diagnostic gap. The threat being prevented is also specific to the mobile platform's redirect-handling model and is not captured by general 'attack surface reduction' language.
+**Assessment:** The answer identified the security domain and the platform constraint (mobile binary inspectability) but misidentified the cryptographic primitive twice — first as temporal binding plus MFA provenance, then under direct refinement as an asymmetric public/private keypair scheme. The B3 security mechanism invariant requires naming the mechanism and why it is sufficient against the specific threat; the response named neither the threat correctly (authorization code interception via OS redirect handling on native clients) nor the mechanism (SHA-256 preimage resistance binding /authorize to /token). The gap is in the specific RFC 7636 construction and the public-client credential-confidentiality impossibility from RFC 6749 §2.1.
 
 **Literature**
 
-- [remediation] RFC 7636: Proof Key for Code Exchange by OAuth Public Clients — §1 Introduction, §1.1 Protocol Flow, §4.1–§4.6 (code_verifier construction, code_challenge derivation, S256 method, server-side verification) — ~45m
-- [remediation] OAuth 2.0 for Native Apps (BCP 212 / RFC 8252) — §8.1 Protecting the Authorization Code, §7 Receiving the Authorization Response (custom URI schemes, claimed https schemes, loopback interface) — ~30m
+- [remediation] RFC 7636: Proof Key for Code Exchange by OAuth Public Clients — §1 (Authorization Code Interception Attack), §4.1 code_verifier, §4.2 code_challenge, §4.6 Server Verifies code_verifier — ~45m
+- [remediation] OAuth 2.0 in Action — Ch. 7 §Public clients and Ch. 10 §Native applications and PKCE — ~2h
 
 </small>
 </details>
@@ -132,18 +132,18 @@ band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 
  
 
-**Assessment:** The answer recognised shuffle skew and named salting as the mitigation, but mis-attributed the mechanism to a defect in the hash function rather than to the deliberate co-location property that every hash join depends on. The proposed salting variant — hashing only the suffix of customer_id while keeping a deterministic prefix — would route all sentinel rows to the same reducer and not relieve the skew, indicating the redistribution logic was not internalised. The refinement directly probed this assumption; the response acknowledged the assumption could be wrong but pivoted to an upstream schema suggestion rather than correcting the join-time mechanism, and never described the paired fact-side key augmentation with dim-side row replication that makes salting work. The gap is in the partitioner's contract and how a composite key changes its input distribution.
+**Assessment:** The answer identified shuffle skew and named salting at vocabulary level but mis-attributed the mechanism to hash-function entropy rather than to the co-location-by-contract requirement that every hash join imposes — equal keys MUST land on one reducer for the join to be correct, and entropy in the hash would break that. The proposed prefix-deterministic salting variant would not redistribute work because a partitioner keying on the prefix would still route all sentinel rows to one task; the dimension-side replication step and the post-join rollup are both absent. The refinement probe gave a chance to interrogate the 'naive hashing' framing, but the answerer pivoted to an upstream schema suggestion (add a label column) rather than repairing the partitioner-contract understanding. The gap is in the join-internals primitive, not in awareness of the symptom.
 
 **Literature**
 
-- [remediation] High Performance Spark — Ch. 4 §Joins (SQL & Core) — 'Speeding Up Joins by Assigning a Known Sort Order' and 'Skewed Data' subsections (the canonical chapter on hash-join mechanics and the salting pattern with both fact-side key augmentation and dim-side replication worked through end-to-end) — ~1h 15m
-- [remediation] Apache Spark Documentation — Adaptive Query Execution — §Optimizing Skew Join — spark.sql.adaptive.skewJoin.enabled and the partition-splitting mechanism AQE applies automatically when one shuffle partition is N× larger than the median — ~20m
+- [remediation] High Performance Spark — Ch. 4 §Skewed Data — salting with paired fact-side key augmentation, dim-side row replication, and post-aggregation rollup — ~45m
+- [remediation] Spark: The Definitive Guide — Ch. 19 §How Spark Performs Joins — hash partitioning and the co-location contract for equal keys — ~35m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q5 · systems-distributed · leader-election-fencing-token · pre 2 → post 3 · ceiling b1</samp></summary>
+<summary><samp>q5 · systems-distributed · leader-election-fencing-token · pre 3 → post 3 · ceiling b2 · transitional b3</samp></summary>
 
 <small>
 
@@ -153,12 +153,12 @@ band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 
  
 
-**Assessment:** The answer identifies the right problem family (stale-writer corruption, token-gated writes, storage-side enforcement at the ingest boundary) but the core comparison mechanism is mis-specified: the refinement proposes a bitwise-xor or diverging-character index, where the fencing protocol requires a monotonic greater-than check against a durably-held high-water mark. The reason a lease-and-clock-only design fails is also mis-rooted in a TOCTOU/polling argument rather than in the non-authoritativeness of the deposed leader's local clock-belief after an unbounded pause. The 'A wakes up, sees its writes are late, and drops itself' framing inverts the design — A does not need to discover anything; the storage rejects A's write unconditionally based on token order. The storage-side requirements (durable max-token, atomic compare-and-write, behavior across restart) are gestured at but not derived.
+**Assessment:** The answer correctly locates the enforcement boundary — storage-side, at the ingest layer, before request acceptance — and recognizes that monotonicity, durability, and serialization must hold there. Two load-bearing articulation gaps remain after refinement: first, the lease+clock failure is attributed to TOCTOU and polling delay rather than to the lease holder's local clock being non-authoritative during an unbounded process pause; second, the storage-side comparison is described as a bitwise/divergence-index operation rather than as a monotonic greater-than check against a durable high-water mark with atomic accept-or-reject. The mechanism is named in the right neighborhood but the operator and the underlying invariant are not committed.
 
 **Literature**
 
-- [remediation] Designing Data-Intensive Applications — Ch. 8 §The Truth Is Defined by the Majority — 'Fencing tokens', pp. 301–304 — ~45m
-- [remediation] How to do distributed locking — Section 'Making the lock safe with fencing' — ~25m
+- [remediation] How to do distributed locking — §'Making the lock safe with fencing' — the fencing-token diagram and the storage-server rule: 'the storage server remembers that it has already processed a write with a higher token number, and so it rejects the request with token 33' — ~20m
+- [remediation] Designing Data-Intensive Applications — Ch. 8 §'The Truth Is Defined by the Majority' — 'Fencing tokens' (pp. 301–304), and §'Process Pauses' (pp. 295–299) — ~45m
 
 </small>
 </details>
