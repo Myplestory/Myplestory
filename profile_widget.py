@@ -128,8 +128,8 @@ def normalize_band(b: str | None) -> str | None:
     return s
 
 
-def ceiling_and_transitional(q: dict) -> tuple[str, str | None]:
-    ceiling = normalize_band(q.get("band_ceiling_post")) or "b1"
+def ceiling_and_transitional(q: dict) -> tuple[str | None, str | None]:
+    ceiling = normalize_band(q.get("band_ceiling_post"))
     transitional = normalize_band(q.get("transitional_post"))
     return ceiling, transitional
 
@@ -297,16 +297,19 @@ def render_question_summary(idx: int, q: dict, calibrated_band: str) -> str:
     post = band_score(q, "bands", calibrated_band)
     ceiling, transitional = ceiling_and_transitional(q)
     line = (
-        f"q{idx} · {field} · {topic} · pre {fmt_num(pre)} → post {fmt_num(post)} · ceiling {ceiling}"
+        f"q{idx} · {field} · {topic} · pre {fmt_num(pre)} → post {fmt_num(post)} · ceiling {ceiling or '—'}"
     )
     if transitional and transitional != ceiling:
         line += f" · transitional {transitional}"
+    if q.get("non_monotonic_post"):
+        line += " · non-monotonic"
     return line
 
 
 def render_question_details(idx: int, q: dict, calibrated_band: str) -> str:
     summary = render_question_summary(idx, q, calibrated_band)
     scenario = (q.get("question") or "").strip()
+    refinement = (q.get("refine") or "").strip()
     assessment = (q.get("assessment") or "").strip()
     lit_lines = render_literature(q)
     lit_block = "\n".join(lit_lines) if lit_lines else ""
@@ -319,6 +322,10 @@ def render_question_details(idx: int, q: dict, calibrated_band: str) -> str:
         "\xa0\n"
         "\n"
         f"**Scenario:** {scenario}\n"
+        "\n"
+        "\xa0\n"
+        "\n"
+        f"**Refinement:** {refinement}\n"
         "\n"
         "\xa0\n"
         "\n"
@@ -438,7 +445,11 @@ def main() -> int:
 
     path = Path(args.readme)
     text = path.read_text() if path.exists() else ""
-    path.write_text(splice(text, widget))
+    new_text = splice(text, widget)
+    if new_text == text:
+        print(f"widget unchanged in {path}")
+        return 0
+    path.write_text(new_text)
     print(f"updated widget in {path}")
     return 0
 

@@ -59,13 +59,17 @@ band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 ```
 
 <details>
-<summary><samp>q1 · ml-engineering · feature-importance-interpretation · pre 2 → post 2 · ceiling b1</samp></summary>
+<summary><samp>q1 · ml-engineering · feature-importance-interpretation · pre 2 → post 2 · ceiling — · transitional b1</samp></summary>
 
 <small>
 
  
 
 **Scenario:** A data scientist at an insurance pricing startup trains an XGBoost model to predict claim severity. They report to the product team that the top three features by gain importance are policy_tenure_days, policy_tenure_months, and policy_tenure_years (all derived from the same policyholder start date). The product team wants to drop policy_tenure_months and policy_tenure_years to simplify the feature pipeline, citing that gain importance shows they're 'almost as predictive' as policy_tenure_days. Explain (a) what gain importance is actually measuring and why it produces this misleading picture when correlated/redundant features are present, (b) what would happen mechanically if you dropped two of the three features and retrained, and (c) what alternative importance method would give a more trustworthy answer to the product team's question, and what it measures differently.
+
+ 
+
+**Refinement:** You said 'it scopes the scalar of one feature to one value/measurement when it very well is dependent on others'. Clarify: what is the specific tree-building decision that causes gain to be split across correlated features rather than concentrated on one of them?
 
  
 
@@ -90,6 +94,10 @@ band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 
  
 
+**Refinement:** You said 'the model only sees the context of the call in isolation'. Clarify: what specific content is present in the message history the model receives on the second and third iteration after a tool failure, and how does that content shape the model's next token prediction?
+
+ 
+
 **Assessment:** The answer correctly proposes the right family of remediations — structured error envelopes, bounded retries, and a deterministic outer controller with argument-hash dedup — and frames the orchestration boundary correctly as 'move control off the non-deterministic model.' The refinement targeted the underlying primitive (what is the model actually seeing on iteration N+1?) and the answer attributed the repeated-call behavior to LLM-side token caching rather than to the cumulative message history conditioning the next-turn distribution. The gap is in the conditioning-vs-caching distinction: understanding that the tool result message is appended to history and re-fed on every call, and that this history (not any cache) is what shapes the next token choice.
 
 **Literature**
@@ -101,13 +109,17 @@ band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 </details>
 
 <details>
-<summary><samp>q3 · security · oauth-authorization-code-flow · pre 2 → post 2 · ceiling b1</samp></summary>
+<summary><samp>q3 · security · oauth-authorization-code-flow · pre 2 → post 2 · ceiling — · transitional b1</samp></summary>
 
 <small>
 
  
 
 **Scenario:** A mobile app for a retail loyalty program uses OAuth 2.0 to authenticate users against the company's identity provider. The original implementation used the authorization code flow with a static client_secret embedded in the mobile binary. A security review flagged this and the team migrated to authorization code flow with PKCE, removing the client_secret entirely. A junior engineer asks: 'If we just removed the secret and added a code_verifier/code_challenge, what attack are we actually preventing? The authorization code is still in the redirect URL either way.' Explain (a) the specific attack PKCE prevents that the static-secret flow could not defend against on a mobile device, (b) the mechanism by which code_challenge (sent at /authorize) and code_verifier (sent at /token) bind the two requests together so an interceptor of the code cannot redeem it, and (c) why simply keeping the client_secret would not have closed this gap on a mobile client.
+
+ 
+
+**Refinement:** You said 'The mechanism bind the two requests via temporal linking and MFA allows origin checks (provenance)'. Clarify: what cryptographic property of the code_challenge and code_verifier pair prevents an attacker who has already captured the authorization code from redeeming it at the /token endpoint?
 
  
 
@@ -122,13 +134,17 @@ band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 </details>
 
 <details>
-<summary><samp>q4 · data-engineering · data-skew-in-shuffle · pre 2 → post 2 · ceiling b1</samp></summary>
+<summary><samp>q4 · data-engineering · data-skew-in-shuffle · pre 2 → post 2 · ceiling — · transitional b1</samp></summary>
 
 <small>
 
  
 
 **Scenario:** A daily Spark job joins a clickstream fact table (~2B rows/day) against a customer dimension (~50M rows) on customer_id, then aggregates clicks-per-customer-per-day. The job runs for 45 minutes total, but the Spark UI shows 199 of 200 shuffle tasks finishing within 3 minutes while one task runs for 42 minutes processing ~30% of the data. Investigation shows that customer_id = 0 is used as a sentinel for unauthenticated/anonymous traffic and accounts for roughly 600M rows/day. Explain (a) the precise mechanism by which a single skewed key produces this one-task-dominates pattern in a shuffle-based hash join, (b) the 'salting' technique for mitigating this — what you change on each side of the join and why it redistributes the work — and (c) one tradeoff or correctness concern the salting approach introduces that did not exist in the naive join.
+
+ 
+
+**Refinement:** You said 'a) the mechanism that a single skewed key produces this in a shuffle based hash ...'. What breaks if that assumption is wrong?
 
  
 
@@ -150,6 +166,10 @@ band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
  
 
 **Scenario:** A distributed job scheduler uses a coordination service (e.g., ZooKeeper/etcd) to elect a single leader that holds an exclusive lease on writing to a shared object store. Leases expire after 30 seconds and are renewed every 10 seconds. An on-call engineer reports a corruption incident: leader A experienced a 45-second GC pause, leader B was elected and started writing during the pause, then leader A woke up, still believed it held the lease (its in-process clock said only a moment had passed), and wrote stale data over B's writes. Explain (a) why a lease-and-clock-only design is insufficient to prevent this class of bug regardless of how short you make the lease, (b) what a fencing token is, the monotonicity property it must have, and how the object store must use it to make A's late write a no-op, and (c) what specifically must change on the storage side — not just the client — for fencing to actually work.
+
+ 
+
+**Refinement:** You said 'any stale or invalid tokens to write are denied'. Clarify: what comparison does the object store perform on the token value to distinguish a late write from a valid one, and where must that comparison state be durably held?
 
  
 
