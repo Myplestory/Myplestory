@@ -33,7 +33,7 @@ currently working on low latency infra, compliance systems, evaluation harnesses
  
 
 <details>
-<summary><samp>fortifai · self-audit loop · streak 3d</samp></summary>
+<summary><samp>fortifai · self-audit loop · streak 4d</samp></summary>
 
 <sub><samp><i>self-audit: scenario-based time-pressured recall, cross-domain breadth, b3-calibrated<br>
 invariant: zero outside assistance. no docs, no ai, no peers. 10m/response, 5m/single refinement<br>
@@ -41,144 +41,144 @@ breadth: systems/distributed, backend, sre, ml, ai/llm, frontend, data, security
 bar: consistent ≥3 across all 8 swe fields</i></samp></sub>
 
 ```
-industry     swe                                  updated         2026-05-17
-scope        cross-domain · grab-bag              duration        48m 41s
+industry     swe                                  updated         2026-05-18
+scope        cross-domain · grab-bag              duration        1h 7m
 calibration  b3 "practitioner"                    rotation bias   underindexed-weighted
 
                                               b₂  b3  b₄
-q1  ml-engineering     feature-importance      ₂   2   ₁
-q2  ai-llm             function-calling-loop   ₄   3   ₂
-q3  security           oauth-authorization     ₂   2   ₁
-q4  data-engineering   data-skew-in-shuffle    ₂   2   ₁
-q5  systems-distributedleader-election         ₄   3   ₂
+q1  frontend           focus-management        ₃   2   ₂
+q2  security           timing-attack           ₃   2   ₁
+q3  backend            select-for-update-skip  ₃   3   ₂
+q4  sre                log-cardinality         ₂   2   ₂
+q5  systems-distributedread-replica-lag        ₃   3   ₂
 
-gaps         authorization-code-interception · correlated-feature-importance-split · data-skew-in-shuffle · feature-importance-interpretation
+gaps         constant-time-comparison · focus-management · keyboard-trap · log-cardinality-explosion
 
 score (dreyfus)    1 (novice) → 3 (competent) → 5 (mastered)
 band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 ```
 
 <details>
-<summary><samp>q1 · ml-engineering · feature-importance-interpretation · pre 2 → post 2 · ceiling — · transitional b1</samp></summary>
+<summary><samp>q1 · frontend · focus-management · pre 1 → post 2 · ceiling — · transitional b1–b2</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A data scientist at an insurance pricing startup trains an XGBoost model to predict claim severity. They report to the product team that the top three features by gain importance are policy_tenure_days, policy_tenure_months, and policy_tenure_years (all derived from the same policyholder start date). The product team wants to drop policy_tenure_months and policy_tenure_years to simplify the feature pipeline, citing that gain importance shows they're 'almost as predictive' as policy_tenure_days. Explain (a) what gain importance is actually measuring and why it produces this misleading picture when correlated/redundant features are present, (b) what would happen mechanically if you dropped two of the three features and retrained, and (c) what alternative importance method would give a more trustworthy answer to the product team's question, and what it measures differently.
+**Scenario:** A SaaS dashboard product has a custom React modal component used across the app for confirmation dialogs and forms. QA reports three issues from an accessibility audit: (1) when the modal opens, keyboard users tab through the underlying page elements behind the modal rather than only the modal's controls; (2) when the modal closes, focus lands at the top of the page rather than returning to the button that opened it; (3) screen reader users sometimes hear content from the page beneath the modal. Explain the mechanism behind each of these three failures (what the browser is actually doing in each case), then describe what a correct implementation must do for each. Be specific about which DOM/ARIA primitives are involved and why a CSS-only fix (e.g., z-index, pointer-events) cannot solve any of them.
 
  
 
-**Refinement:** You said 'it scopes the scalar of one feature to one value/measurement when it very well is dependent on others'. Clarify: what is the specific tree-building decision that causes gain to be split across correlated features rather than concentrated on one of them?
+**Refinement:** You said 'the modal is not treated as a leaf of the render tree'. Clarify: what specific browser behavior governs which elements are reachable via Tab key, and why tree position alone does not determine that behavior?
 
  
 
-**Assessment:** The answer recognized that correlation among the three tenure features distorts the importance picture but did not produce the mechanism: what gain is actually summing, what tree-building decision causes the fragmentation, what would mechanically happen to performance after dropping the redundant columns, and which named alternative method gives a more trustworthy answer. The refinement probe pointed directly at the split-selection step and surfaced the phrase 'split points', but did not connect it to per-node greedy candidate evaluation across near-identical features. The gap is in the formal definition of gain attribution and the canonical alternative-method literature.
+**Assessment:** The response correctly senses that the three failures are about something other than visual layering, and the refinement moves from a 'render tree leaf' model toward 'Tab iterates focusable elements via an attribute, not via tree position' — directionally right. However, none of the actual governing primitives are named: the attribute that controls tab reachability, the mechanism that hides a subtree from assistive technology, the API used to capture and restore focus across an open/close lifecycle, and the established UI pattern that bundles these as a single component contract. The CSS-only dismissal is asserted as 'attribute vs structural' without grounding it in why focus order and the accessibility tree are independent of paint and hit-testing. The gap is the WAI-ARIA dialog pattern and its three implementation primitives.
 
 **Literature**
 
-- [remediation] Introduction to Boosted Trees (XGBoost documentation) — §The Structure Score and §Learn the tree structure — definition of gain as G²/(H+λ) and how it is accumulated per feature across splits; plus Python API Booster.get_score importance_type='gain' / 'total_gain' — ~45m
-- [remediation] Interpretable Machine Learning — Ch. 8.5 Permutation Feature Importance — definition, correlated-feature failure mode, and the hierarchical-clustering remedy; cross-read with the scikit-learn example 'Permutation Importance with Multicollinear or Correlated Features' — ~50m
+- [remediation] ARIA Authoring Practices Guide — Dialog (Modal) Pattern — Full pattern page: Keyboard Interaction, WAI-ARIA Roles/States/Properties, and the linked 'Modal Dialog Example' implementation notes — covers focus trap, role=dialog, aria-modal=true, focus restoration on close — ~45m
+- [remediation] The inert attribute — MDN Web Docs — Full page: definition, effect on focus order, effect on the accessibility tree, and the 'Use cases — modal dialogs' subsection — ~20m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q2 · ai-llm · function-calling-loop · pre 3 → post 3 · ceiling b2 · transitional b3</samp></summary>
+<summary><samp>q2 · security · timing-attack · pre 2 → post 2 · ceiling b1 · transitional b2</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A SaaS support assistant is built as an LLM agent with three tools: search_kb(query), get_ticket(ticket_id), and create_ticket(payload). The current loop is: send prompt → if model returns a tool call, execute it → append tool result to messages → call model again → repeat until model returns a final text response. In production, two failure modes appear: (1) when a tool raises an exception, the agent often loops calling the same tool with the same arguments 5-10 times before giving up, and (2) occasionally the model emits a tool call with a malformed argument (e.g., ticket_id as a sentence rather than an id), the tool errors, and the model 'apologizes' to the user without retrying. Explain (a) why the current loop produces these behaviors — what the model is actually seeing in its context on each iteration, (b) two specific changes to how tool results (especially errors) are formatted and fed back that would change this behavior, and (c) what loop-level control you would add and why it is preferable to relying on the model to self-terminate.
+**Scenario:** A company exposes a webhook receiver that authenticates incoming requests by checking an HMAC signature in the X-Signature header against an HMAC the server computes over the request body using a shared secret. The current implementation does the comparison with a standard string equality operator (`if computed_sig == header_sig`). A security researcher claims this is exploitable via a timing side channel even though the secret is never reflected in any response. Explain the mechanism: how can an attacker who only sees response latency learn information about the correct signature, and what is the attacker actually recovering (the secret? the expected signature? something else)? Then state the correct primitive to use and why it eliminates the leak. Finally, name one additional class of secret comparison in a typical web stack that has the same hazard.
 
  
 
-**Refinement:** You said 'the model only sees the context of the call in isolation'. Clarify: what specific content is present in the message history the model receives on the second and third iteration after a tool failure, and how does that content shape the model's next token prediction?
+**Refinement:** You said 'latency itself between the incoming request and the server compare check is a vector of which the attacker can get information about the HMAC sig details'. Clarify: what specific property of the byte-by-byte comparison loop causes response latency to vary with the attacker's input, and what does each measurement reveal about the target value?
 
  
 
-**Assessment:** The answer correctly proposes the right family of remediations — structured error envelopes, bounded retries, and a deterministic outer controller with argument-hash dedup — and frames the orchestration boundary correctly as 'move control off the non-deterministic model.' The refinement targeted the underlying primitive (what is the model actually seeing on iteration N+1?) and the answer attributed the repeated-call behavior to LLM-side token caching rather than to the cumulative message history conditioning the next-turn distribution. The gap is in the conditioning-vs-caching distinction: understanding that the tool result message is appended to history and re-fed on every call, and that this history (not any cache) is what shapes the next token choice.
+**Assessment:** The response identified that a timing side channel was claimed and, after refinement, located the issue at the byte-by-byte comparison loop — a correct boundary observation. However, the underlying mechanism by which loop duration leaks information was not articulated; the answer attributed the latency variation to TOCTOU semantics and to cache hot/cold effects rather than to the behavior of the standard equality operator on mismatching bytes. The mitigation was likewise misidentified as 'a different signature/hash' rather than as a comparison-time primitive. The gap is in the operational behavior of standard string/byte equality and in the family of cryptographic-comparison primitives that exists specifically to neutralize it. The additional-example part of the question also requires naming a peer secret-comparison surface in the same hazard class.
 
 **Literature**
 
-- [remediation] Building Effective Agents — §Tool use and §Agents — specifically the description of how tool results are appended to the message array and re-fed as input on each iteration of the agent loop — ~20m
-- [remediation] vLLM: Efficient Memory Management for Large Language Model Serving with PagedAttention — §3 Background — KV cache and prefix sharing (~3 pages) — ~30m
+- [remediation] Coda Hale, 'A Lesson In Timing Attacks (or, Don't use MessageDigest.isEquals)' — Full post — the canonical walkthrough of how standard byte-array comparison leaks through early-exit and how a constant-time XOR-OR loop fixes it; includes the byte-by-byte recovery attack and the corrected primitive in one short read. — ~15m
+- [remediation] Python stdlib docs — hmac.compare_digest — hmac.compare_digest entry and the cross-referenced secrets.compare_digest — the API note explicitly states the function 'uses an approach designed to prevent timing analysis by avoiding content-based short circuit behaviour,' and lists the comparison surfaces it is meant for (HMACs, tokens, secrets). — ~10m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q3 · security · oauth-authorization-code-flow · pre 2 → post 2 · ceiling — · transitional b1</samp></summary>
+<summary><samp>q3 · backend · select-for-update-skip-locked · pre 2 → post 3 · ceiling b1 · transitional b2–b3</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A mobile app for a retail loyalty program uses OAuth 2.0 to authenticate users against the company's identity provider. The original implementation used the authorization code flow with a static client_secret embedded in the mobile binary. A security review flagged this and the team migrated to authorization code flow with PKCE, removing the client_secret entirely. A junior engineer asks: 'If we just removed the secret and added a code_verifier/code_challenge, what attack are we actually preventing? The authorization code is still in the redirect URL either way.' Explain (a) the specific attack PKCE prevents that the static-secret flow could not defend against on a mobile device, (b) the mechanism by which code_challenge (sent at /authorize) and code_verifier (sent at /token) bind the two requests together so an interceptor of the code cannot redeem it, and (c) why simply keeping the client_secret would not have closed this gap on a mobile client.
+**Scenario:** A team is building a background job worker pool in Python against Postgres. Jobs live in a `jobs` table with columns `(id, status, run_at, payload)`. Workers poll for ready jobs with `SELECT id FROM jobs WHERE status = 'ready' AND run_at <= now() ORDER BY run_at LIMIT 10` and then update the rows to `'running'`. With 20 workers polling every second they observe: most workers pick up the same rows and only one wins the update, the other 19 do wasted work; under load some workers block for seconds on the SELECT. The senior on the team suggests changing the query to `SELECT id FROM jobs WHERE status = 'ready' AND run_at <= now() ORDER BY run_at LIMIT 10 FOR UPDATE SKIP LOCKED` and doing the status update in the same transaction. Explain what `FOR UPDATE SKIP LOCKED` does at the row-lock level, why it fixes both the duplicate-work problem and the blocking problem, and what tradeoff it introduces that plain `FOR UPDATE` does not have. Dismiss the alternative of using application-level distributed locks (e.g., a Redis lock per job id) on a specific tradeoff axis.
 
  
 
-**Refinement:** You said 'The mechanism bind the two requests via temporal linking and MFA allows origin checks (provenance)'. Clarify: what cryptographic property of the code_challenge and code_verifier pair prevents an attacker who has already captured the authorization code from redeeming it at the /token endpoint?
+**Refinement:** You said 'the ready probe is fail closed, because the job is run on that row and returns not ready due to access being gated'. Clarify: what specifically happens at the row-lock level that causes a competing worker's SELECT to skip the locked row rather than block on it, and how that differs from the behavior of plain FOR UPDATE.
 
  
 
-**Assessment:** The answer identified the security domain and the platform constraint (mobile binary inspectability) but misidentified the cryptographic primitive twice — first as temporal binding plus MFA provenance, then under direct refinement as an asymmetric public/private keypair scheme. The B3 security mechanism invariant requires naming the mechanism and why it is sufficient against the specific threat; the response named neither the threat correctly (authorization code interception via OS redirect handling on native clients) nor the mechanism (SHA-256 preimage resistance binding /authorize to /token). The gap is in the specific RFC 7636 construction and the public-client credential-confidentiality impossibility from RFC 6749 §2.1.
+**Assessment:** The original answer recognized the row-level locking pattern and the directional fix, but the mechanism by which SKIP LOCKED differs from plain FOR UPDATE was substituted with invented vocabulary ('fail closed on the ready probe'). The refinement narrowed the gap — the enqueue-vs-skip contrast is correct in shape — but the answer remains hedged, speculates that indexing is the arbitration site (it is not), and never names the actual tradeoff that the question explicitly asks for. The dismissal of Redis distributed locks lands on an off-axis distinction rather than the concrete property the question is probing.
 
 **Literature**
 
-- [remediation] RFC 7636: Proof Key for Code Exchange by OAuth Public Clients — §1 (Authorization Code Interception Attack), §4.1 code_verifier, §4.2 code_challenge, §4.6 Server Verifies code_verifier — ~45m
-- [remediation] OAuth 2.0 in Action — Ch. 7 §Public clients and Ch. 10 §Native applications and PKCE — ~2h
+- [remediation] PostgreSQL Documentation — The Locking Clause (SELECT ... FOR UPDATE / SKIP LOCKED) — §SELECT — The Locking Clause: subsections on FOR UPDATE and on NOWAIT / SKIP LOCKED behavior, including the explicit note that SKIP LOCKED returns an inconsistent view of the data. — ~20m
+- [remediation] What's the Difference Between FOR UPDATE and FOR UPDATE SKIP LOCKED? — Full post — a focused walkthrough of the job-queue use case showing concurrent transactions, how plain FOR UPDATE blocks and serializes workers, and how SKIP LOCKED produces disjoint batches. — ~15m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q4 · data-engineering · data-skew-in-shuffle · pre 2 → post 2 · ceiling — · transitional b1</samp></summary>
+<summary><samp>q4 · sre · log-cardinality-explosion · pre 2 → post 2 · ceiling — · transitional b1</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A daily Spark job joins a clickstream fact table (~2B rows/day) against a customer dimension (~50M rows) on customer_id, then aggregates clicks-per-customer-per-day. The job runs for 45 minutes total, but the Spark UI shows 199 of 200 shuffle tasks finishing within 3 minutes while one task runs for 42 minutes processing ~30% of the data. Investigation shows that customer_id = 0 is used as a sentinel for unauthenticated/anonymous traffic and accounts for roughly 600M rows/day. Explain (a) the precise mechanism by which a single skewed key produces this one-task-dominates pattern in a shuffle-based hash join, (b) the 'salting' technique for mitigating this — what you change on each side of the join and why it redistributes the work — and (c) one tradeoff or correctness concern the salting approach introduces that did not exist in the naive join.
+**Scenario:** An on-call engineer at a mid-sized SaaS company is investigating why their logging bill from a managed log provider has tripled in three months while traffic only grew 20%. They discover that ingest volume is dominated by a handful of services that recently adopted structured logging. On inspection, log lines from these services include fields like `request_id`, `user_id`, `trace_id`, and a free-form `error_message` that includes stack traces with memory addresses. Their alerting backend (a metrics system) is also slow when querying by service. Explain why high-cardinality fields are expensive in two distinct ways depending on whether they land in a log indexing system or a metrics system — what data structure each system maintains and how cardinality affects it. Then describe the discipline a team should adopt to keep observability useful: which fields belong in logs vs. metrics vs. traces, and why `user_id` is fine in one of those three places but ruinous in another.
 
  
 
-**Refinement:** You said 'a) the mechanism that a single skewed key produces this in a shuffle based hash ...'. What breaks if that assumption is wrong?
+**Refinement:** You said 'metrics system which uses numeric data/aggregated data by types'. Clarify: what specific data structure a metrics system maintains per label combination, and how adding a high-cardinality label like `user_id` causes that structure to grow in a way that differs from adding more time-series data points.
 
  
 
-**Assessment:** The answer identified shuffle skew and named salting at vocabulary level but mis-attributed the mechanism to hash-function entropy rather than to the co-location-by-contract requirement that every hash join imposes — equal keys MUST land on one reducer for the join to be correct, and entropy in the hash would break that. The proposed prefix-deterministic salting variant would not redistribute work because a partitioner keying on the prefix would still route all sentinel rows to one task; the dimension-side replication step and the post-join rollup are both absent. The refinement probe gave a chance to interrogate the 'naive hashing' framing, but the answerer pivoted to an upstream schema suggestion (add a label column) rather than repairing the partitioner-contract understanding. The gap is in the join-internals primitive, not in awareness of the symptom.
+**Assessment:** The answer identified that cardinality drives observability cost but misnamed the underlying data structures in both systems — log indexing was described as a B-tree rather than an inverted index, and the metrics-system unit was described as 'the numeric data itself' rather than the per-label-combination time series. The refinement probe specifically asked for the structure metrics systems maintain per label combination and how it grows differently from data-point appends; the response reframed the question as character-base entropy (base-10 vs base-36) instead of naming the active-series multiplication. The discipline guidance was also inverted: the response placed user_id and request_id into logs as a way to make indexing 'load bearing,' but did not state the rule that high-cardinality identifiers must be kept out of metric labels and belong in logs/traces for a structural reason. The gap is in the canonical telemetry-system data structures and the cardinality-vs-samples distinction.
 
 **Literature**
 
-- [remediation] High Performance Spark — Ch. 4 §Skewed Data — salting with paired fact-side key augmentation, dim-side row replication, and post-aggregation rollup — ~45m
-- [remediation] Spark: The Definitive Guide — Ch. 19 §How Spark Performs Joins — hash partitioning and the co-location contract for equal keys — ~35m
+- [remediation] Observability Engineering — Ch. 1 'What Is Observability?' and Ch. 2 'How Debugging Practices Differ Between Observability and Monitoring' — the cardinality distinction between metrics and event-based telemetry, and why high-cardinality fields are the unit of value in logs/traces but the unit of cost in metrics — ~1h 30m
+- [remediation] Prometheus Documentation — Naming and Labels — Practices §Labels and Practices §Instrumentation §Things to watch out for — 'CAUTION: Remember that every unique combination of key-value label pairs represents a new time series, which can dramatically increase the amount of data stored.' — ~15m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q5 · systems-distributed · leader-election-fencing-token · pre 3 → post 3 · ceiling b2 · transitional b3</samp></summary>
+<summary><samp>q5 · systems-distributed · read-replica-lag-routing · pre 2 → post 3 · ceiling b1 · transitional b2–b3</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A distributed job scheduler uses a coordination service (e.g., ZooKeeper/etcd) to elect a single leader that holds an exclusive lease on writing to a shared object store. Leases expire after 30 seconds and are renewed every 10 seconds. An on-call engineer reports a corruption incident: leader A experienced a 45-second GC pause, leader B was elected and started writing during the pause, then leader A woke up, still believed it held the lease (its in-process clock said only a moment had passed), and wrote stale data over B's writes. Explain (a) why a lease-and-clock-only design is insufficient to prevent this class of bug regardless of how short you make the lease, (b) what a fencing token is, the monotonicity property it must have, and how the object store must use it to make A's late write a no-op, and (c) what specifically must change on the storage side — not just the client — for fencing to actually work.
+**Scenario:** An e-commerce platform routes reads to a pool of asynchronous Postgres read replicas and writes to the primary. Customers report a recurring bug: after submitting a product review (write to primary), the next page load shows the product page without their review, but a refresh 2-3 seconds later shows it. The team's first instinct is to route all reads to the primary for 5 seconds after any write from that user. Explain why this 'sticky-to-primary window' approach is a fragile fix — what specifically goes wrong under (a) load balancer rotation across multiple app servers, (b) the customer opening the page on a second device, and (c) a replica that happens to be 8 seconds behind. Then describe the correct mechanism that gives this customer read-your-writes consistency without sending all their reads to the primary. Name the specific primitive the application has to track and how the replica routing decision is made from it.
 
  
 
-**Refinement:** You said 'any stale or invalid tokens to write are denied'. Clarify: what comparison does the object store perform on the token value to distinguish a late write from a valid one, and where must that comparison state be durably held?
+**Refinement:** You said 'the replica routing does this through fencing tokens and access to the LSN of the replicas and dbs, and routes accordingly as the write is propogated throughout the system'. Clarify: what specific value does the application capture at write time, where does it store that value between requests, and what comparison against replica state causes the router to accept or reject a given replica for the next read?
 
  
 
-**Assessment:** The answer correctly locates the enforcement boundary — storage-side, at the ingest layer, before request acceptance — and recognizes that monotonicity, durability, and serialization must hold there. Two load-bearing articulation gaps remain after refinement: first, the lease+clock failure is attributed to TOCTOU and polling delay rather than to the lease holder's local clock being non-authoritative during an unbounded process pause; second, the storage-side comparison is described as a bitwise/divergence-index operation rather than as a monotonic greater-than check against a durable high-water mark with atomic accept-or-reject. The mechanism is named in the right neighborhood but the operator and the underlying invariant are not committed.
+**Assessment:** The answer correctly rejects sticky-to-primary and identifies that read-your-writes requires a per-write ordering token compared against per-replica applied state. The post-refinement turn produces a worked example of the comparison shape (replica applied-state ≥ user's write-state ⇒ route). Two gaps remain: the primitive is misnamed as a fencing token (which is a lock-safety primitive, a different concern), and the token's storage location is placed at the load balancer rather than in per-user session state — a placement that fails exactly the second-device case the question probed. The fix is to read the canonical session-consistency-via-LSN pattern and the fencing-token chapter back-to-back so the two primitives become disambiguated.
 
 **Literature**
 
-- [remediation] How to do distributed locking — §'Making the lock safe with fencing' — the fencing-token diagram and the storage-server rule: 'the storage server remembers that it has already processed a write with a higher token number, and so it rejects the request with token 33' — ~20m
-- [remediation] Designing Data-Intensive Applications — Ch. 8 §'The Truth Is Defined by the Majority' — 'Fencing tokens' (pp. 301–304), and §'Process Pauses' (pp. 295–299) — ~45m
+- [remediation] Designing Data-Intensive Applications — Ch. 5 §Problems with Replication Lag — 'Reading Your Own Writes' and 'Monotonic Reads', pp. 161–168 — ~2h
+- [remediation] Designing Data-Intensive Applications — Ch. 8 §The Truth Is Defined by the Majority — 'Fencing tokens', pp. 301–304 — ~45m
 
 </small>
 </details>
