@@ -41,144 +41,144 @@ breadth: systems/distributed, backend, sre, ml, ai/llm, frontend, data, security
 bar: consistent ≥3 across all 8 swe fields</i></samp></sub>
 
 ```
-industry     swe                                  updated         2026-05-21
-scope        cross-domain · grab-bag              duration        1h 0m
+industry     swe                                  updated         2026-05-22
+scope        cross-domain · grab-bag              duration        58m 4s
 calibration  b3 "practitioner"                    rotation bias   underindexed-weighted
 
                                               b₂  b3  b₄
-q1  frontend           error-boundary          ₂   2   ₁
-q2  ml-engineering     probability             ₂   2   ₁
-q3  sre                error-budget-policy     ₂   2   ₁
-q4  security           idor                    ₃   3   ₂
-q5  systems-distributeddual-region-active      ₂   2   ₁
+q1  frontend           concurrent-rendering    ₂   1   ₁
+q2  data-engineering   bloom-filter-pushdown   ₂   2   ₁
+q3  ml-engineering     concept-drift-vs-data   ₂   2   ₁
+q4  security           session-fixation        ₄   3   ₂
+q5  ai-llm             reranker-cross-encoder  ₂   2   ₂
 
-gaps         component-failure-isolation · dual-region-active-active · error-boundary · error-budget-policy
+gaps         bi-encoder-vs-cross-encoder · bloom-filter-pushdown · concept-drift-vs-data-drift · concurrent-rendering
 
 score (dreyfus)    1 (novice) → 3 (competent) → 5 (mastered)
 band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 ```
 
 <details>
-<summary><samp>q1 · frontend · error-boundary · pre 2 → post 2 · ceiling —</samp></summary>
+<summary><samp>q1 · frontend · concurrent-rendering · pre 1 → post 1 · ceiling —</samp></summary>
 
 <small>
 
  
 
-**Scenario:** Team Y is building a dashboard SaaS where the main page composes ~12 independent widgets (charts, tables, KPI tiles) from different upstream services. Today, when one widget's render throws (e.g., it receives malformed data from a flaky service), the entire dashboard goes blank with a white screen and the user has to refresh. Product wants the failing widget to show an inline error state while the other 11 keep working. Explain the React mechanism you'd use to achieve this, why it works at the level of the component tree, and what classes of errors it does NOT catch — name at least two — so the team understands where complementary handling is still required.
+**Scenario:** A SaaS analytics dashboard has a search input that filters a list of 8,000 rows rendered as a complex component tree (each row has charts and sparklines). Users complain that typing in the search box feels laggy — keystrokes visibly stutter. A junior engineer proposes wrapping the filter state update in React's useTransition. Explain the mechanism by which useTransition would improve keystroke responsiveness here: what specifically gets marked as a 'transition,' what does React do differently with that update versus an urgent one, and what visible behavior does the user get in exchange? Then identify one scenario where useDeferredValue would be the better choice instead, and explain why.
 
  
 
-**Refinement:** You said 'a global per page/app level context that passes that context down/propogates errors but stops before reachig the highest level of the heirarchy'. Clarify: what specific React mechanism enforces the boundary at which an error stops propagating up the tree, and how does it intercept a render-phase throw rather than relying on state updates?
+**Refinement:** You said 'it propogates the ui/ux reactive, meaning less latency than setting/propogating the state up the fabric tree'. Clarify: what does React do with the rendering work for the filtered list during the period between the keystroke and the transition completing?
 
  
 
-**Assessment:** The question tested whether the answerer could name React's Error Boundary mechanism as the per-widget failure-isolation primitive, explain that it catches render-phase throws because React's reconciler walks up the fiber tree to the nearest ancestor boundary, and name at least two classes of errors it does not catch. The original response substituted virtualization and context-based state scoping for the actual mechanism, which addresses different problems (DOM node budget and prop-drilling) and does not intercept a render throw. The refinement probe was explicit about the gap, and the follow-up introduced a C++/Rust idiom ('implicit RAII', Ok/Err optionals) rather than naming React's lifecycle-based interception — confirming the canonical mechanism is not in the answerer's recall. The two classes of uncaught errors named in the original answer (duplicate renders, state reconciliation races) are also not the documented uncaught classes.
+**Assessment:** The answer never anchors to React's documented priority model — that the controlled input's setState is processed as an urgent update while the filter setState wrapped in startTransition is deferred and rendered in an interruptible concurrent pass that newer keystrokes can abandon. The refinement probe gave a direct opening to name interruptibility and instead received a 'stacking dominos' metaphor that does not correspond to how the scheduler behaves. The useDeferredValue scenario also misses the actual differentiator, which is ownership of the setter (values arriving via props or external hooks that cannot be wrapped in startTransition). A secondary gap: neither hook reduces render cost for 8,000 complex rows, so a proficient answer would also flag that virtualization or per-row memoization is the real lever and useTransition is complementary, not a substitute.
 
 **Literature**
 
-- [remediation] React Documentation — Catching rendering errors with an error boundary — Component reference §'Catching rendering errors with an error boundary' (~4 pages: the section itself plus the linked 'static getDerivedStateFromError' and 'componentDidCatch' API entries) — ~30m
-- [remediation] react-error-boundary — README §'Usage', §'API', §'FAQ — Why won't my errors get caught?' — ~25m
+- [remediation] useTransition — React Reference — 'useTransition' reference page in full — Reference, Usage ('Marking a state update as a non-blocking transition', 'Updating the parent component in a transition', 'Displaying a pending visual state during the transition'), and Troubleshooting — ~30m
+- [remediation] useDeferredValue — React Reference — 'useDeferredValue' reference page in full — Usage ('Showing stale content while fresh content is loading', 'Indicating that the content is stale', 'Deferring re-rendering for a part of the UI') and 'useDeferredValue vs useTransition' comparison — ~25m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q2 · ml-engineering · probability-calibration · pre 1 → post 2 · ceiling —</samp></summary>
+<summary><samp>q2 · data-engineering · bloom-filter-pushdown · pre 2 → post 2 · ceiling — · transitional b1</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A fraud-detection model at fintech Company X is a gradient-boosted classifier whose AUC is 0.94 on a held-out set. The risk team wants to use the model's predicted probability directly as an expected-loss input (e.g., 'block if predicted P(fraud) × transaction_amount > $X'). On inspection, the model's predicted probabilities are systematically too low in the 0.6–0.9 range — when the model says 0.8, the empirical fraud rate among those transactions is closer to 0.92. Explain (a) what 'calibration' means here and how it differs from discrimination/AUC, (b) the mechanism by which a strong-discriminator model can still be poorly calibrated, and (c) one post-hoc calibration technique you'd apply, what data you'd fit it on, and what it gives up.
+**Scenario:** A data team stores 5 years of clickstream events in Parquet files on object storage, partitioned by event_date. Analysts increasingly run queries like 'find all events for user_id = X across the entire history' — these scan terabytes because user_id is uncorrelated with partition date. The team is considering two interventions: (a) Z-order clustering by user_id within each partition, or (b) writing a Bloom filter index per file on user_id. Explain the mechanism each one uses to reduce I/O for a point-lookup-by-user_id query, what each gives up (write-side cost, query patterns they don't help, false-positive behavior), and which you'd commit to first for this access pattern. Why?
 
  
 
-**Refinement:** You said 'it reduces the gap between the trained accuracy/precision (golden set) and'. Clarify: what specific property of the model's output distribution is being corrected when calibration is applied, distinct from changing how the model separates fraud from non-fraud cases?
+**Refinement:** You said 'Bloom filter index is a query time optimization. It allows efficient access of matching through composite data points/keys and set/subset theory to index and make the access less costly (exact method slipped my mind)'. Clarify: what property of the Bloom filter data structure lets it rule out an entire file without reading its row groups, and at what stage of query execution does that file elimination happen?
 
  
 
-**Assessment:** The answer does not establish what calibration is as a property of the output distribution — it is conflated with threshold tuning, overfitting, and feature-level error analysis throughout. The refinement nudged the answer toward 'post-fit remap to empirical data', which is directionally correct, but the canonical methods, their data requirement, and what they trade off are never produced. The gap is at the level of the core vocabulary and standard toolkit, not at the level of nuance.
+**Assessment:** The candidate recognises the two techniques as named categories but cannot describe the mechanism by which either reduces I/O. The refinement targeted the single most important Bloom property — what lets a file be eliminated without opening its row groups — and the answer returned a description of prefix matching, which is a different data structure. The commit recommendation also inverts the expected direction for an equality point-lookup access pattern over multi-terabyte historical data. The gap is at the data-structure layer (how Bloom hashes set bits, how Z-order interacts with footer min/max statistics) and at the cost-model layer (rewrite-all-history vs append-time footer addition).
 
 **Literature**
 
-- [remediation] scikit-learn User Guide §1.16 Probability calibration — §1.16.1 Calibration curves, §1.16.2 Calibrating a classifier, §1.16.3 Usage (full chapter) — ~45m
-- [remediation] Designing Machine Learning Systems — Ch. 6 §Evaluation Metrics — Calibration subsection (one focused subsection) — ~20m
+- [remediation] Designing Data-Intensive Applications — Ch. 3 §Storage and Retrieval — SSTables, LSM-trees and Bloom filters (pp. 78–84); plus Ch. 3 §Column-Oriented Storage — column compression, sort orders, and writing to column-oriented storage (pp. 95–101) — ~3h 30m
+- [remediation] Delta Lake: The Definitive Guide — Ch. 5 'Performance Tuning' §Data Skipping and Z-Ordering — how OPTIMIZE ZORDER BY rewrites files and how the engine uses per-file min/max stats stored in the transaction log to skip files at scan-planning time — ~45m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q3 · sre · error-budget-policy · pre 2 → post 2 · ceiling —</samp></summary>
+<summary><samp>q3 · ml-engineering · concept-drift-vs-data-drift · pre 2 → post 2 · ceiling — · transitional b1</samp></summary>
 
 <small>
 
  
 
-**Scenario:** Service A has a 99.9% monthly availability SLO, giving roughly 43 minutes of allowed downtime per month. Three weeks into the month, an incident has already burned ~38 minutes of budget. The product team wants to ship a major feature next week. As the SRE on-call lead, walk through (a) how you'd compute the current error-budget state in concrete terms (what 'budget remaining' means numerically and how you'd track it through the rest of the month), (b) what policy this should trigger and why error-budget policies tie release decisions to budget state rather than to individual incident severity, and (c) the tradeoff against a 'fast burn' alert that fires within the same window — what does each signal tell you that the other doesn't?
+**Scenario:** A fraud-detection model deployed for 8 months has shown a slow, steady decline in precision (from 0.91 to 0.78) while recall has remained roughly constant. The ML platform team monitors input feature distributions using Population Stability Index (PSI) per feature, and none of the per-feature PSI values have crossed the alerting threshold. Explain the distinction between data drift and concept drift, identify which is most consistent with the observed symptom pattern, and explain why per-feature PSI monitoring failed to detect it. What additional monitoring signal would catch this class of drift, and what does that signal require that per-feature PSI does not?
 
  
 
-**Refinement:** You said 'burn alert that fires in the same window, the signals get more urgency, but along certain axes'. Clarify: what distinct information does a fast-burn rate signal give you about current consumption velocity that the remaining-budget figure alone does not capture?
+**Refinement:** You said 'drift is the blending of the features cause stable psi to manifest in a different manner'. Clarify: what is it about the relationship between features and the target label that per-feature PSI structurally cannot observe, even when every individual feature distribution is stable?
 
  
 
-**Assessment:** The question asked for three specific things: concrete arithmetic on the remaining budget, the canonical policy mechanism that ties release decisions to budget state, and the stock-vs-flow distinction between remaining budget and fast-burn rate. The response substituted a generic multi-signal matrix for all three. The refinement probe specifically narrowed in on the stock/flow distinction; the answer collapsed the two signals into a single non-canonical formula and introduced inverted circuit-breaker state semantics. The gap is in the canonical SRE error-budget vocabulary and the multi-window multi-burn-rate alerting construction.
+**Assessment:** The answer correctly identified the symptom as concept drift but never produced the controlling distinction — that data drift concerns P(X) while concept drift concerns the conditional P(y|X), the relationship between features and the label. The refinement probe explicitly named that relationship and the response still pivoted to multivariate feature interactions (which describe joint data drift) rather than to the label-vs-feature axis. The gap is twofold: the structural reason per-feature PSI fails (it inspects marginals of X only, never y) and the required signal (label-aware performance monitoring, with the operational implication that production labels must be available, despite the fraud-domain chargeback delay).
 
 **Literature**
 
-- [remediation] Site Reliability Workbook — Ch. 5 'Alerting on SLOs' — focused chapter on multi-window multi-burn-rate alerting; specifically the worked example computing budget consumed as (1 − SLO) × total_window, and the table mapping burn-rate × window pairs to paging vs. ticket alerts — ~1h 15m
-- [remediation] Site Reliability Engineering — Ch. 3 'Embracing Risk' and Ch. 4 'Service Level Objectives' — focused chapters establishing the error-budget-as-contract concept: why ship/freeze decisions are tied to budget state and not incident severity, and how the budget depersonalizes the product-vs-SRE negotiation — ~1h 30m
+- [remediation] Designing Machine Learning Systems — Ch. 8 'Data Distribution Shifts and Monitoring' — specifically the subsections on covariate shift vs. label shift vs. concept drift, and the monitoring-signal taxonomy (input monitoring, prediction monitoring, accuracy-related metrics monitoring). — ~1h 15m
+- [remediation] A Survey on Concept Drift Adaptation — §2 'Concept Drift Definitions' and §3 'Concept Drift Detection Methods' — the formal P(X,y) decomposition into P(X)·P(y|X) and the taxonomy of detectors that require labels vs. those that do not. — ~1h
 
 </small>
 </details>
 
 <details>
-<summary><samp>q4 · security · idor · pre 2 → post 3 · ceiling b1 · transitional b2–b3</samp></summary>
+<summary><samp>q4 · security · session-fixation · pre 3 → post 3 · ceiling b2 · transitional b3</samp></summary>
 
 <small>
 
  
 
-**Scenario:** An audit of a healthcare SaaS API turns up the following endpoint: GET /api/v2/patients/{patient_id}/records. The handler authenticates the caller via a session JWT (signature validated, not expired) and then loads and returns the records for the patient_id in the URL. Authenticated user Alice (patient_id=4471) can change the URL to /api/v2/patients/4472/records and receive Bob's records. Name the vulnerability class, explain the mechanism (why authentication passes but the attack still succeeds), and describe the structural fix — including where the check belongs in the request pipeline and why a single middleware that 'checks the JWT is valid' is not sufficient. Contrast briefly with how this differs from a missing-authentication bug.
+**Scenario:** A web application issues an anonymous session cookie when a visitor lands on the site (used to track cart contents pre-login). When the user logs in, the application validates credentials and then attaches the user identity to that existing session — same session ID, now authenticated. A penetration tester flags this as a session fixation vulnerability. Explain the attack mechanism: how does an attacker exploit the fact that the session ID does not change at the authentication boundary? What is the structural fix, and why is rotating the session ID at the privilege-elevation moment (rather than, e.g., adding a CSRF token or shortening session TTL) the correct mitigation?
 
  
 
-**Refinement:** You said 'the DATA validity of the request needs to be handled by a gateway/check at the service ingest'. Clarify: what specific attribute of the authenticated session must be compared against what specific attribute of the requested resource at that check point, and where does that pairing come from?
+**Refinement:** You said 'csrf can be'. Clarify: what specific property of session ID rotation at the privilege boundary makes it effective against the fixation attack vector that neither CSRF tokens nor TTL reduction can address?
 
  
 
-**Assessment:** The answer recognizes that JWT validity is not authority and, under refinement, isolates the correct attribute pairing (authenticated subject identity against the resource's ownership identifier). What it does not produce — even when explicitly asked — is the canonical class name for this failure, the contrast with missing-authentication that the prompt requested, or a correct source-of-truth for the ownership lookup: the refinement proposes caching session-to-owner mappings as the authoritative comparator, which inverts the trust model (the resource's stored owner field is the authoritative side, not a session-derived cache). The vocabulary gap and the inverted-trust-source gap together cap the B3 score at the mechanism-precedence floor.
+**Assessment:** The answer commits to the correct structural fix (session ID rotation at the privilege-elevation boundary) and identifies the boundary-crossing nature of the bug, but never describes the fixation attack itself — how the attacker obtains or plants the pre-auth session ID and waits for the victim to authenticate on it. The refinement probe asked specifically why rotation defeats fixation where CSRF tokens and TTL reduction cannot; the response described how rotation is implemented (server-side, atomic) rather than why the replacement of the identifier severs the attacker's pre-auth knowledge from the post-auth credential. The gap is in articulating the attacker's capability and what each candidate mitigation does and does not remove from that capability.
 
 **Literature**
 
-- [remediation] OWASP API Security Top 10 — API1:2023 Broken Object Level Authorization — Full page: Description, Example Attack Scenarios, How to Prevent — ~20m
-- [remediation] OWASP Authorization Cheat Sheet — Chapter: 'Enforce Authorization Checks on Static and Dynamic Resources' and 'Verify the Source of a Website Redirect and Other Similar Transformations' — focus on object-level checks and authoritative ownership lookup — ~30m
+- [remediation] OWASP Session Management Cheat Sheet — §Session ID Lifecycle — 'Renew the Session ID After Any Privilege Level Change' and §Session Attacks — 'Session Fixation' — ~25m
+- [remediation] Session Fixation Vulnerability in Web-based Applications — §3 Attack Variants and §4 Countermeasures — full paper, focusing on the attack-tree distinguishing fixation from hijacking and why ID regeneration is the structural fix — ~45m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q5 · systems-distributed · dual-region-active-active · pre 2 → post 2 · ceiling — · transitional b1</samp></summary>
+<summary><samp>q5 · ai-llm · reranker-cross-encoder · pre 2 → post 2 · ceiling —</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A SaaS product runs in one region today and the team is planning an active-active two-region deployment (us-east, eu-west) for an inventory-management table where each row represents a SKU's available stock count, mutated by decrement-on-order and increment-on-restock operations. Each region accepts writes locally and replicates asynchronously to the other. Walk through (a) the concrete failure mode that can occur when the inter-region link partitions for several minutes while both regions accept writes against the same SKU, (b) why naive last-write-wins on a wall-clock timestamp is the wrong conflict-resolution primitive for this specific workload, and (c) one alternative resolution strategy and why it fits the operation semantics better — including what it still gives up compared to a single-region design.
+**Scenario:** A RAG system over a 2M-document corpus uses a bi-encoder (e.g., a sentence-transformer) to embed documents and queries, then retrieves the top-50 by cosine similarity. Faithfulness evaluations show the retrieved set often contains the right document but ranked at position 20-40, so the top-5 passed into the LLM context misses it. A teammate proposes adding a cross-encoder reranker over the top-50 before truncating to top-5. Explain the architectural distinction between a bi-encoder and a cross-encoder, why a cross-encoder produces better relevance ranking at the cost that prevents you from using it as the first-stage retriever, and what the two-stage retrieve-then-rerank pattern gives up in exchange for the improved top-k quality.
 
  
 
-**Refinement:** You said 'tracking the RECONCILIATION is the load bear, not the ORDERING OF THE DATA ITSELF'. Clarify: how does your snapshot/hybrid-clock approach handle two concurrent decrements against the same SKU stock count that together would drive inventory below zero, given that each region saw sufficient stock locally at write time?
+**Refinement:** You said 'the cross encoder does it both ways (two pass, forward back)'. Clarify: what is the actual input construction difference between a bi-encoder and a cross-encoder at inference time, and why does that difference prevent precomputing and caching document representations?
 
  
 
-**Assessment:** The answer recognized that asynchronous replication creates a window of concurrent independent writes, but reached for ordering/snapshot/vector-clock primitives when the question was about composing commutative operations. The refinement probe handed the answerer the exact diagnostic case — two decrements driving stock below zero — and the response chose a winner ('DB2 wins') rather than recognizing that both decrements must compose. The gap is the operation-semantics frame: this workload's writes are deltas, not absolute values, and the correct primitive class preserves the operation rather than picking a state. The standard remediation pointer is the CRDT family, specifically counter CRDTs, and the inventory-as-escrow alternative.
+**Assessment:** The question tested whether the answerer can name the mechanism by which a cross-encoder produces better relevance than a bi-encoder, and why that same mechanism prevents first-stage use. The response correctly identified the latency/throughput tradeoff as the giveup of the two-stage pattern, which is a real B3 fact, but the architectural distinction was substituted with a fabricated 'forward vs forward-back / set-theory surjective-bijective' frame that does not describe either encoder. The refinement probe targeted exactly this gap, and the refine_response moved further from the canonical answer by introducing additional unfounded vocabulary ('canonical normalized tokens', 'hash', 'clustering of embed top-k') rather than committing to or correcting the input-construction model. The gap is at the input-pair construction and the role of joint self-attention.
 
 **Literature**
 
-- [remediation] Designing Data-Intensive Applications — Ch. 5 §Handling Write Conflicts (pp. 171–177) and Ch. 5 §Conflict Resolution — 'Custom Conflict Resolution Logic' & 'Automatic Conflict Resolution' / 'CRDTs' (pp. 174–177) — ~1h 30m
-- [remediation] A comprehensive study of Convergent and Commutative Replicated Data Types — §3 'State-based CRDTs' and §3.1 'Counter' (PN-Counter) — pp. 13–18 — ~50m
+- [remediation] Sentence-Transformers Documentation — Cross-Encoders — Cross-Encoders — full page including 'Bi-Encoder vs. Cross-Encoder' diagram and 'Retrieve & Re-Rank' chapter (https://www.sbert.net/examples/applications/retrieve_rerank/README.html) — ~45m
+- [remediation] Passage Re-ranking with BERT — §3 Method — input representation and §4 Experiments — MS MARCO retrieval pipeline — ~1h 30m
 
 </small>
 </details>
