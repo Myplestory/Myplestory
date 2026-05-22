@@ -48,9 +48,9 @@ calibration  b3 "practitioner"                    rotation bias   underindexed-w
                                               b₂  b3  b₄
 q1  frontend           concurrent-rendering    ₂   1   ₁
 q2  data-engineering   bloom-filter-pushdown   ₂   2   ₁
-q3  ml-engineering     concept-drift-vs-data   ₂   2   ₁
-q4  security           session-fixation        ₄   3   ₂
-q5  ai-llm             reranker-cross-encoder  ₂   2   ₂
+q3  ml-engineering     concept-drift-vs-data   ₂   2   ₂
+q4  security           session-fixation        ₅   3   ₂
+q5  ai-llm             reranker-cross-encoder  ₂   2   ₁
 
 gaps         bi-encoder-vs-cross-encoder · bloom-filter-pushdown · concept-drift-vs-data-drift · concurrent-rendering
 
@@ -73,12 +73,12 @@ band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 
  
 
-**Assessment:** The answer never anchors to React's documented priority model — that the controlled input's setState is processed as an urgent update while the filter setState wrapped in startTransition is deferred and rendered in an interruptible concurrent pass that newer keystrokes can abandon. The refinement probe gave a direct opening to name interruptibility and instead received a 'stacking dominos' metaphor that does not correspond to how the scheduler behaves. The useDeferredValue scenario also misses the actual differentiator, which is ownership of the setter (values arriving via props or external hooks that cannot be wrapped in startTransition). A secondary gap: neither hook reduces render cost for 8,000 complex rows, so a proficient answer would also flag that virtualization or per-row memoization is the real lever and useTransition is complementary, not a substitute.
+**Assessment:** The question tested whether the answerer could name React 18's documented priority model for the keystroke-lag scenario — what gets marked as urgent vs as a transition, and what the concurrent renderer does with an in-progress lower-priority render when a new urgent update arrives. The response substituted invented vocabulary for the API across both turns, and the refinement probe — which targeted exactly the interruptibility behavior — produced a metaphor ('stacking dominos, then tip over') that inverts the documented model. The ownership-of-setter rule that selects useDeferredValue over useTransition was also miscast as a functional/UX distinction. The gap is in the canonical React 18 concurrent rendering model itself.
 
 **Literature**
 
-- [remediation] useTransition — React Reference — 'useTransition' reference page in full — Reference, Usage ('Marking a state update as a non-blocking transition', 'Updating the parent component in a transition', 'Displaying a pending visual state during the transition'), and Troubleshooting — ~30m
-- [remediation] useDeferredValue — React Reference — 'useDeferredValue' reference page in full — Usage ('Showing stale content while fresh content is loading', 'Indicating that the content is stale', 'Deferring re-rendering for a part of the UI') and 'useDeferredValue vs useTransition' comparison — ~25m
+- [remediation] useTransition — React Reference — Entire page: Reference (signature, isPending, startTransition) + Usage §'Marking a state update as a non-blocking transition' and §'Updating the parent component in a transition' — ~25m
+- [remediation] useDeferredValue — React Reference, §'useDeferredValue vs useTransition' — Entire page: Reference + Usage §'Deferring re-rendering for a part of the UI' + the explicit §'useDeferredValue vs useTransition' comparison — ~20m
 
 </small>
 </details>
@@ -98,12 +98,12 @@ band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 
  
 
-**Assessment:** The candidate recognises the two techniques as named categories but cannot describe the mechanism by which either reduces I/O. The refinement targeted the single most important Bloom property — what lets a file be eliminated without opening its row groups — and the answer returned a description of prefix matching, which is a different data structure. The commit recommendation also inverts the expected direction for an equality point-lookup access pattern over multi-terabyte historical data. The gap is at the data-structure layer (how Bloom hashes set bits, how Z-order interacts with footer min/max statistics) and at the cost-model layer (rewrite-all-history vs append-time footer addition).
+**Assessment:** The response treats Bloom filters as 'set/subset theory' pre-refinement and then commits confidently to 'prefix matching with fail-fast on incorrect prefixes' under refinement — both are the wrong data structure for the Parquet Bloom filter index. Z-order is described as deferring query-time work to write time via 'locality of data', missing the actual two-part mechanism (Morton-curve clustering enabling per-file min/max data-skipping at scan planning). The commit ordering for an equality point-lookup over 5 years of immutable Parquet is inverted relative to the write-amplification cost calculus. The gap is in the names of the two pruning data structures, where they live in the Parquet footer, and at what query-execution stage they prune.
 
 **Literature**
 
-- [remediation] Designing Data-Intensive Applications — Ch. 3 §Storage and Retrieval — SSTables, LSM-trees and Bloom filters (pp. 78–84); plus Ch. 3 §Column-Oriented Storage — column compression, sort orders, and writing to column-oriented storage (pp. 95–101) — ~3h 30m
-- [remediation] Delta Lake: The Definitive Guide — Ch. 5 'Performance Tuning' §Data Skipping and Z-Ordering — how OPTIMIZE ZORDER BY rewrites files and how the engine uses per-file min/max stats stored in the transaction log to skip files at scan-planning time — ~45m
+- [remediation] Designing Data-Intensive Applications — Ch. 3 §SSTables and LSM-Trees, 'Performance optimizations' subsection (pp. 80–84) — Bloom filter as probabilistic set membership with k hash functions and no false negatives — ~30m
+- [remediation] Delta Lake Documentation — Data Skipping and Z-Ordering — §Data Skipping and §OPTIMIZE ZORDER BY — per-file min/max statistics in the transaction log, Morton-curve clustering, write amplification of OPTIMIZE — ~30m
 
 </small>
 </details>
@@ -123,12 +123,12 @@ band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 
  
 
-**Assessment:** The answer correctly identified the symptom as concept drift but never produced the controlling distinction — that data drift concerns P(X) while concept drift concerns the conditional P(y|X), the relationship between features and the label. The refinement probe explicitly named that relationship and the response still pivoted to multivariate feature interactions (which describe joint data drift) rather than to the label-vs-feature axis. The gap is twofold: the structural reason per-feature PSI fails (it inspects marginals of X only, never y) and the required signal (label-aware performance monitoring, with the operational implication that production labels must be available, despite the fraud-domain chargeback delay).
+**Assessment:** The answer identified concept drift as the correct domain but never produced the operative framing — that concept drift is a change in P(y|X) and that per-feature PSI is structurally blind to it because labels are not an input to the statistic. The refinement probe directly named "the relationship between features and the target label" and the response pivoted to multivariate feature interaction and cardinality, not to labels. The monitoring signal that catches this class of drift, and the label-availability dependency it introduces relative to PSI, were never named.
 
 **Literature**
 
-- [remediation] Designing Machine Learning Systems — Ch. 8 'Data Distribution Shifts and Monitoring' — specifically the subsections on covariate shift vs. label shift vs. concept drift, and the monitoring-signal taxonomy (input monitoring, prediction monitoring, accuracy-related metrics monitoring). — ~1h 15m
-- [remediation] A Survey on Concept Drift Adaptation — §2 'Concept Drift Definitions' and §3 'Concept Drift Detection Methods' — the formal P(X,y) decomposition into P(X)·P(y|X) and the taxonomy of detectors that require labels vs. those that do not. — ~1h
+- [remediation] Designing Machine Learning Systems — Ch. 8 §Types of Data Distribution Shifts and §Monitoring ML Systems (covariate shift, label shift, concept drift; feature-monitor blindness; label-aware monitoring) — ~1h 30m
+- [remediation] A Survey on Concept Drift Adaptation — §2 Concept Drift Formalization (P(X,y) = P(X)·P(y|X) decomposition; labeled vs unlabeled drift detectors) — ~45m
 
 </small>
 </details>
@@ -148,12 +148,12 @@ band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 
  
 
-**Assessment:** The answer commits to the correct structural fix (session ID rotation at the privilege-elevation boundary) and identifies the boundary-crossing nature of the bug, but never describes the fixation attack itself — how the attacker obtains or plants the pre-auth session ID and waits for the victim to authenticate on it. The refinement probe asked specifically why rotation defeats fixation where CSRF tokens and TTL reduction cannot; the response described how rotation is implemented (server-side, atomic) rather than why the replacement of the identifier severs the attacker's pre-auth knowledge from the post-auth credential. The gap is in articulating the attacker's capability and what each candidate mitigation does and does not remove from that capability.
+**Assessment:** The response correctly localizes the defect at the unauthenticated → authenticated boundary and commits to the right structural fix (rotate the session identifier at privilege elevation), which satisfies the structural-commit half of the B3 invariant. It does not name the vulnerability class, does not describe how an attacker comes to possess the pre-auth identifier in the first place, and does not give a causal argument for why the two named alternatives are categorically inappropriate rather than merely weaker. The refinement asked precisely for that causal argument and instead substituted implementation properties (server-side ownership, atomicity, constant-time comparison) drawn from adjacent threat models. The gap is in threat-model vocabulary and in articulating what each mitigation assumes about the attacker's knowledge of the session ID.
 
 **Literature**
 
-- [remediation] OWASP Session Management Cheat Sheet — §Session ID Lifecycle — 'Renew the Session ID After Any Privilege Level Change' and §Session Attacks — 'Session Fixation' — ~25m
-- [remediation] Session Fixation Vulnerability in Web-based Applications — §3 Attack Variants and §4 Countermeasures — full paper, focusing on the attack-tree distinguishing fixation from hijacking and why ID regeneration is the structural fix — ~45m
+- [remediation] OWASP Session Management Cheat Sheet — §Renew the Session ID After Any Privilege Level Change, and §Session Fixation — ~20m
+- [remediation] Session Fixation Vulnerability in Web-based Applications — §3 Attack Variants and §4 Countermeasures — ~30m
 
 </small>
 </details>
@@ -173,12 +173,12 @@ band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 
  
 
-**Assessment:** The question tested whether the answerer can name the mechanism by which a cross-encoder produces better relevance than a bi-encoder, and why that same mechanism prevents first-stage use. The response correctly identified the latency/throughput tradeoff as the giveup of the two-stage pattern, which is a real B3 fact, but the architectural distinction was substituted with a fabricated 'forward vs forward-back / set-theory surjective-bijective' frame that does not describe either encoder. The refinement probe targeted exactly this gap, and the refine_response moved further from the canonical answer by introducing additional unfounded vocabulary ('canonical normalized tokens', 'hash', 'clustering of embed top-k') rather than committing to or correcting the input-construction model. The gap is at the input-pair construction and the role of joint self-attention.
+**Assessment:** The answer correctly identified that two-stage retrieve-then-rerank trades latency and throughput for improved top-k quality, which is one part of the B3 articulation. However, the load-bearing architectural distinction — that a cross-encoder jointly encodes the concatenated query and document so self-attention runs across both, making the document representation query-dependent and therefore impossible to precompute — was not stated, and was instead replaced by a 'forward vs forward-and-backward pass' and set-theoretic frame that do not correspond to the actual mechanism. The refinement probed exactly this gap and the response introduced additional unfounded vocabulary (hashes of canonicalized tokens, clustering-altered embeddings) rather than producing the canonical input-construction fact. The recall-ceiling giveup of the two-stage pattern was also not surfaced.
 
 **Literature**
 
-- [remediation] Sentence-Transformers Documentation — Cross-Encoders — Cross-Encoders — full page including 'Bi-Encoder vs. Cross-Encoder' diagram and 'Retrieve & Re-Rank' chapter (https://www.sbert.net/examples/applications/retrieve_rerank/README.html) — ~45m
-- [remediation] Passage Re-ranking with BERT — §3 Method — input representation and §4 Experiments — MS MARCO retrieval pipeline — ~1h 30m
+- [remediation] Sentence-Transformers — Cross-Encoders — 'Bi-Encoder vs. Cross-Encoder' section — the diagram and the two paragraphs immediately following it (the canonical one-page explainer for this exact distinction) — ~10m
+- [remediation] Sentence-Transformers — Retrieve & Re-Rank — The 'Retrieve & Re-Rank Pipeline' diagram and the paragraph stating cross-encoders are not used for retrieval over large collections plus the recall-ceiling note — ~10m
 
 </small>
 </details>
