@@ -33,7 +33,7 @@ currently working on low latency infra, compliance systems, evaluation harnesses
  
 
 <details>
-<summary><samp>fortifai · self-audit loop · streak 1d</samp></summary>
+<summary><samp>fortifai · self-audit loop · streak 2d</samp></summary>
 
 <sub><samp><i>self-audit: scenario-based time-pressured recall, cross-domain breadth, b3-calibrated<br>
 invariant: zero outside assistance. no docs, no ai, no peers. 10m/response, 5m/single refinement<br>
