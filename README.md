@@ -33,7 +33,7 @@ currently working on low latency infra, compliance systems, evaluation harnesses
  
 
 <details>
-<summary><samp>fortifai · self-audit loop · streak 2d</samp></summary>
+<summary><samp>fortifai · self-audit loop · streak 3d</samp></summary>
 
 <sub><samp><i>self-audit: scenario-based time-pressured recall, cross-domain breadth, b3-calibrated<br>
 invariant: zero outside assistance. no docs, no ai, no peers. 10m/response, 5m/single refinement<br>
@@ -41,144 +41,144 @@ breadth: systems/distributed, backend, sre, ml, ai/llm, frontend, data, security
 bar: consistent ≥3 across all 8 swe fields</i></samp></sub>
 
 ```
-industry     swe                                  updated         2026-05-22
-scope        cross-domain · grab-bag              duration        58m 4s
+industry     swe                                  updated         2026-05-23
+scope        cross-domain · grab-bag              duration        1h 6m
 calibration  b3 "practitioner"                    rotation bias   underindexed-weighted
 
                                               b₂  b3  b₄
-q1  frontend           concurrent-rendering    ₂   1   ₁
-q2  data-engineering   bloom-filter-pushdown   ₂   2   ₁
-q3  ml-engineering     concept-drift-vs-data   ₂   2   ₂
-q4  security           session-fixation        ₅   3   ₂
-q5  ai-llm             reranker-cross-encoder  ₂   2   ₁
+q1  systems-distributedleader-lease-expiry     ₃   2   ₂
+q2  ai-llm             embedding-cache         ₃   2   ₂
+q3  frontend           browser-event-loop      ₂   2   ₁
+q4  ml-engineering     auc-vs-pr-curve-under   ₁   1   ₁
+q5  backend            postgres-mvcc-bloat     ₂   2   ₂
 
-gaps         bi-encoder-vs-cross-encoder · bloom-filter-pushdown · concept-drift-vs-data-drift · concurrent-rendering
+gaps         auc-vs-pr-curve-under-imbalance · browser-event-loop-microtask-macrotask · embedding-cache-invalidation · fencing-token-monotonicity
 
 score (dreyfus)    1 (novice) → 3 (competent) → 5 (mastered)
 band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 ```
 
 <details>
-<summary><samp>q1 · frontend · concurrent-rendering · pre 1 → post 1 · ceiling —</samp></summary>
+<summary><samp>q1 · systems-distributed · leader-lease-expiry · pre 2 → post 2 · ceiling — · transitional b1–b2</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A SaaS analytics dashboard has a search input that filters a list of 8,000 rows rendered as a complex component tree (each row has charts and sparklines). Users complain that typing in the search box feels laggy — keystrokes visibly stutter. A junior engineer proposes wrapping the filter state update in React's useTransition. Explain the mechanism by which useTransition would improve keystroke responsiveness here: what specifically gets marked as a 'transition,' what does React do differently with that update versus an urgent one, and what visible behavior does the user get in exchange? Then identify one scenario where useDeferredValue would be the better choice instead, and explain why.
+**Scenario:** A coordination service issues 30-second leases to designate one node as the 'primary writer' for a shared key-value store. The shared store accepts any write that arrives with a current lease ID. During an incident, the primary writer experienced a 45-second stop-the-world GC pause, then resumed and immediately wrote to the store using what it believed was its valid lease — but by then the coordination service had granted the lease to a new primary, and the new primary had already written. Both writes were accepted; the second writer's data was silently overwritten by the first. Explain the mechanism that caused this failure. Then describe what the shared store would need to do (and what the lease service would need to issue) to make this class of bug impossible. Be specific about why simply shortening the lease TTL to 5 seconds does not fix it.
 
  
 
-**Refinement:** You said 'it propogates the ui/ux reactive, meaning less latency than setting/propogating the state up the fabric tree'. Clarify: what does React do with the rendering work for the filtered list during the period between the keystroke and the transition completing?
+**Refinement:** You said 'shared state as i already explained needs the metadata'. Clarify: what specific property of that metadata forces the store to reject a write from a node whose lease epoch is lower than the last accepted write's epoch, even if the writing node believes its lease is current?
 
  
 
-**Assessment:** The question tested whether the answerer could name React 18's documented priority model for the keystroke-lag scenario — what gets marked as urgent vs as a transition, and what the concurrent renderer does with an in-progress lower-priority render when a new urgent update arrives. The response substituted invented vocabulary for the API across both turns, and the refinement probe — which targeted exactly the interruptibility behavior — produced a metaphor ('stacking dominos, then tip over') that inverts the documented model. The ownership-of-setter rule that selects useDeferredValue over useTransition was also miscast as a functional/UX distinction. The gap is in the canonical React 18 concurrent rendering model itself.
+**Assessment:** The question targeted recognition of the canonical fencing-token pattern: a monotonic epoch issued with each lease, enforced storage-side atomically with the write. The response identified the right problem family (stale-write after pause) and the right failure surface (the store accepted a write it should have rejected), but reached for an event-sourcing/reconciliation primitive instead of the storage-side monotonic-token primitive. The refinement probe explicitly asked what property of the metadata forces the store to reject a lower-epoch write; the answer responded with provenance, election-membership, and Byzantine fault tolerance — escalating to a heavier primitive class rather than naming monotonicity and storage-side enforcement. The gap is in recognizing that the store, not the client, must be the enforcement point, and that the enforcement is a single atomic compare-and-write on a token, not a reconciliation protocol.
 
 **Literature**
 
-- [remediation] useTransition — React Reference — Entire page: Reference (signature, isPending, startTransition) + Usage §'Marking a state update as a non-blocking transition' and §'Updating the parent component in a transition' — ~25m
-- [remediation] useDeferredValue — React Reference, §'useDeferredValue vs useTransition' — Entire page: Reference + Usage §'Deferring re-rendering for a part of the UI' + the explicit §'useDeferredValue vs useTransition' comparison — ~20m
+- [remediation] How to do distributed locking — Sections 'Is Redlock safe?' through 'Making the lock safe with fencing' — the diagram showing client 1 pausing, lease expiring, client 2 acquiring, and the store rejecting client 1's late write because its fencing token is lower than client 2's — ~25m
+- [remediation] Designing Data-Intensive Applications — Ch. 8 §Process Pauses (pp. 295–299) and §The Truth Is Defined by the Majority — 'Fencing tokens' (pp. 301–304) — ~1h 15m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q2 · data-engineering · bloom-filter-pushdown · pre 2 → post 2 · ceiling — · transitional b1</samp></summary>
+<summary><samp>q2 · ai-llm · embedding-cache-invalidation · pre 2 → post 2 · ceiling b1 · transitional b2</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A data team stores 5 years of clickstream events in Parquet files on object storage, partitioned by event_date. Analysts increasingly run queries like 'find all events for user_id = X across the entire history' — these scan terabytes because user_id is uncorrelated with partition date. The team is considering two interventions: (a) Z-order clustering by user_id within each partition, or (b) writing a Bloom filter index per file on user_id. Explain the mechanism each one uses to reduce I/O for a point-lookup-by-user_id query, what each gives up (write-side cost, query patterns they don't help, false-positive behavior), and which you'd commit to first for this access pattern. Why?
+**Scenario:** A documentation-search RAG system caches embeddings for ~2 million corpus chunks in a vector store. The team upgrades from embedding model v1 (768-dim) to embedding model v2 (1536-dim, different training corpus, better recall on technical queries). They want to deploy v2 without a 12-hour full-corpus re-embedding job blocking the rollout. A junior engineer proposes: 'Just re-embed lazily — when a chunk is retrieved by v1 and ranked low, re-embed it with v2 and overwrite the entry.' Explain why this proposal is broken at the retrieval level (not just operationally). Then commit to a deployment strategy that handles the transition correctly, and name what the cache key for an embedding entry must include to prevent this entire class of bug from recurring on future model upgrades.
 
  
 
-**Refinement:** You said 'Bloom filter index is a query time optimization. It allows efficient access of matching through composite data points/keys and set/subset theory to index and make the access less costly (exact method slipped my mind)'. Clarify: what property of the Bloom filter data structure lets it rule out an entire file without reading its row groups, and at what stage of query execution does that file elimination happen?
+**Refinement:** You said 'The ideal balance for this task would be (if allowed) to 1) slowly embed away from the original db'. Clarify: how does query routing work during the transition period when v1 and v2 indexes coexist — specifically, what property of a query result from each index makes them incomparable, and how does your strategy avoid returning a mixed ranking to the user?
 
  
 
-**Assessment:** The response treats Bloom filters as 'set/subset theory' pre-refinement and then commits confidently to 'prefix matching with fail-fast on incorrect prefixes' under refinement — both are the wrong data structure for the Parquet Bloom filter index. Z-order is described as deferring query-time work to write time via 'locality of data', missing the actual two-part mechanism (Morton-curve clustering enabling per-file min/max data-skipping at scan planning). The commit ordering for an equality point-lookup over 5 years of immutable Parquet is inverted relative to the write-amplification cost calculus. The gap is in the names of the two pruning data structures, where they live in the Parquet footer, and at what query-execution stage they prune.
+**Assessment:** The question's mechanism gate is naming why v1 and v2 embeddings are incomparable at the retrieval level — specifically the dimensionality mismatch (768 vs 1536 cannot share an ANN index) and the vector-space non-alignment between independently trained bi-encoders, so similarity scores across the two are not on the same scale. The response identifies that mixing is bad and reaches for 'contamination' as a metaphor, but never names the geometric property, never commits to a concrete deployment shape, and never enumerates what the cache key must contain. The refinement probe targeted exactly the missing primitive ('what property makes the results incomparable') and the answer remained at the metaphor level while deferring the deployment commitment to 'operators'. The gap is in the bi-encoder retrieval contract and the model-version cache-key invariant.
 
 **Literature**
 
-- [remediation] Designing Data-Intensive Applications — Ch. 3 §SSTables and LSM-Trees, 'Performance optimizations' subsection (pp. 80–84) — Bloom filter as probabilistic set membership with k hash functions and no false negatives — ~30m
-- [remediation] Delta Lake Documentation — Data Skipping and Z-Ordering — §Data Skipping and §OPTIMIZE ZORDER BY — per-file min/max statistics in the transaction log, Morton-curve clustering, write amplification of OPTIMIZE — ~30m
+- [remediation] Sentence-Transformers: Semantic Search & Bi-Encoder Retrieval — Semantic Search §'Background' and §'Symmetric vs. Asymmetric Semantic Search' — the bi-encoder contract: query and corpus embeddings must come from the same model to be comparable in the shared vector space — ~25m
+- [remediation] Designing Data-Intensive Applications — Ch. 4 §'Schema Evolution' and Ch. 11 §'Reprocessing Data for Application Evolution', pp. 111–128 and pp. 461–467 — dual-write / dual-read patterns and the derived-data reprocessing playbook that maps directly onto v1/v2 index cutover — ~1h 15m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q3 · ml-engineering · concept-drift-vs-data-drift · pre 2 → post 2 · ceiling — · transitional b1</samp></summary>
+<summary><samp>q3 · frontend · browser-event-loop-microtask-macrotask · pre 2 → post 2 · ceiling — · transitional b1</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A fraud-detection model deployed for 8 months has shown a slow, steady decline in precision (from 0.91 to 0.78) while recall has remained roughly constant. The ML platform team monitors input feature distributions using Population Stability Index (PSI) per feature, and none of the per-feature PSI values have crossed the alerting threshold. Explain the distinction between data drift and concept drift, identify which is most consistent with the observed symptom pattern, and explain why per-feature PSI monitoring failed to detect it. What additional monitoring signal would catch this class of drift, and what does that signal require that per-feature PSI does not?
+**Scenario:** A dashboard renders 200 widgets on mount. Each widget calls `fetch('/api/widget/' + id)` in a `useEffect`, and on resolution calls `setState` to update that widget's data. Users report that during the initial load, clicking buttons or scrolling feels frozen for 2-3 seconds even though the network tab shows responses arriving spread out over time. The team's first instinct is 'we need to debounce setState' — explain why that diagnosis misidentifies the mechanism. Then explain what is actually consuming the main thread in that window, distinguishing between microtasks and macrotasks in the browser event loop, and describe what concretely changes about scheduling if the team wraps each `setState` call in `startTransition` versus if they batch the fetches into chunks of 20 with a `setTimeout(0)` between chunks. Which actually restores input responsiveness and why?
 
  
 
-**Refinement:** You said 'drift is the blending of the features cause stable psi to manifest in a different manner'. Clarify: what is it about the relationship between features and the target label that per-feature PSI structurally cannot observe, even when every individual feature distribution is stable?
+**Refinement:** You said 'the main loop is blocked, hence the 2-3 sec when microtasks are not partitioned/designed thoughtfully and result is propogation of execution pressure through blocks'. Clarify: what specifically in the browser event loop's ordering rules causes a flood of resolved Promise callbacks to prevent input events from being processed, and how does that differ from a macrotask blocking the same loop?
 
  
 
-**Assessment:** The answer identified concept drift as the correct domain but never produced the operative framing — that concept drift is a change in P(y|X) and that per-feature PSI is structurally blind to it because labels are not an input to the statistic. The refinement probe directly named "the relationship between features and the target label" and the response pivoted to multivariate feature interaction and cardinality, not to labels. The monitoring signal that catches this class of drift, and the label-availability dependency it introduces relative to PSI, were never named.
+**Assessment:** The diagnosis hinges on a specific event-loop ordering rule that the answer never names, despite the refinement probe targeting it directly. The response uses microtask/macrotask vocabulary but inverts the roles — describing the main loop as a macrotask that delegates work via microtasks, and the refinement compounds this by claiming event-loop slots are 'allocated at compile'. The two mitigation mechanisms (startTransition vs setTimeout(0) chunking) are both endorsed without committing to which actually breaks the flood and why, leaving the central B3 'why is this mechanism sufficient' question unanswered. The gap is in the HTML spec event-loop algorithm and how React 18's concurrent renderer interacts with it.
 
 **Literature**
 
-- [remediation] Designing Machine Learning Systems — Ch. 8 §Types of Data Distribution Shifts and §Monitoring ML Systems (covariate shift, label shift, concept drift; feature-monitor blindness; label-aware monitoring) — ~1h 30m
-- [remediation] A Survey on Concept Drift Adaptation — §2 Concept Drift Formalization (P(X,y) = P(X)·P(y|X) decomposition; labeled vs unlabeled drift detectors) — ~45m
+- [remediation] In The Loop (JSConf.Asia) — Full talk (~35 min) — the canonical visual explanation of how the HTML spec event loop runs one task, drains all microtasks to empty, then renders/handles input, and exactly how promise floods starve input. — ~35m
+- [remediation] React Docs — useTransition & Concurrent Rendering — useTransition reference page + linked 'React 18 release notes — Concurrent Rendering' section on interruptibility (https://react.dev/blog/2022/03/29/react-v18). Read together as one focused chapter on why startTransition makes renders yield to input. — ~45m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q4 · security · session-fixation · pre 3 → post 3 · ceiling b2 · transitional b3</samp></summary>
+<summary><samp>q4 · ml-engineering · auc-vs-pr-curve-under-imbalance · pre 1 → post 1 · ceiling —</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A web application issues an anonymous session cookie when a visitor lands on the site (used to track cart contents pre-login). When the user logs in, the application validates credentials and then attaches the user identity to that existing session — same session ID, now authenticated. A penetration tester flags this as a session fixation vulnerability. Explain the attack mechanism: how does an attacker exploit the fact that the session ID does not change at the authentication boundary? What is the structural fix, and why is rotating the session ID at the privilege-elevation moment (rather than, e.g., adding a CSRF token or shortening session TTL) the correct mitigation?
+**Scenario:** A team is building a binary classifier for detecting fraudulent insurance claims. Base rate is 0.3% positive. Their first model achieves AUC-ROC of 0.94 on a held-out set, which the PM calls 'excellent.' The deployed model, used at a fixed decision threshold of 0.5, flags only 8% of true fraud cases (recall = 0.08) while producing a precision of 62%. The PM is confused: 'how can AUC be 0.94 if we're catching almost no fraud?' Explain to the PM what AUC-ROC actually measures, why it can look strong on heavily imbalanced data while the deployed model performs poorly, and what specific metric and visualization you would use instead to (a) compare models during development and (b) choose the operating threshold given a business constraint of 'we can manually review at most 500 flagged claims per day out of ~40,000 daily claims.'
 
  
 
-**Refinement:** You said 'csrf can be'. Clarify: what specific property of session ID rotation at the privilege boundary makes it effective against the fixation attack vector that neither CSRF tokens nor TTL reduction can address?
+**Refinement:** You said 'AUC-ROC measures convergence on a designated metric, not a overall'. Clarify: what two axes are being integrated over to produce the AUC-ROC score, and why those axes make the metric insensitive to class imbalance?
 
  
 
-**Assessment:** The response correctly localizes the defect at the unauthenticated → authenticated boundary and commits to the right structural fix (rotate the session identifier at privilege elevation), which satisfies the structural-commit half of the B3 invariant. It does not name the vulnerability class, does not describe how an attacker comes to possess the pre-auth identifier in the first place, and does not give a causal argument for why the two named alternatives are categorically inappropriate rather than merely weaker. The refinement asked precisely for that causal argument and instead substituted implementation properties (server-side ownership, atomicity, constant-time comparison) drawn from adjacent threat models. The gap is in threat-model vocabulary and in articulating what each mitigation assumes about the attacker's knowledge of the session ID.
+**Assessment:** The answer does not satisfy the B3 mechanism invariant for ml-engineering: it never identifies the production-ML concern (a ranking metric being misread as an operating-point metric) and never names the standard primitives — TPR/FPR as the AUC-ROC axes, the FPR-denominator argument for why low base rate inflates AUC, the PR curve / average precision for development comparison, or precision@k for the capacity-constrained threshold. The refinement probe directly named 'the two axes' and asked for the imbalance-insensitivity mechanism; the response explicitly declined the axes and substituted invented vocabulary. The gap is at the level of standard vocabulary and the canonical decomposition of a ranking-vs-operating-point question.
 
 **Literature**
 
-- [remediation] OWASP Session Management Cheat Sheet — §Renew the Session ID After Any Privilege Level Change, and §Session Fixation — ~20m
-- [remediation] Session Fixation Vulnerability in Web-based Applications — §3 Attack Variants and §4 Countermeasures — ~30m
+- [remediation] Hands-On Machine Learning with Scikit-Learn, Keras, and TensorFlow (3rd ed.) — Chapters 2–4 (end-to-end ML project; classification — precision, recall, F1, ROC curve, ROC AUC; training models — learning curves). Read these three chapters together; the gap is foundational vocabulary for classification metrics and threshold selection. — ~25h
+- [remediation] The Relationship Between Precision-Recall and ROC Curves — §3 'ROC and PR' and §4 'Theorem 3.2' — the formal demonstration that PR curves give a more informative picture than ROC curves when the negative class is large, which is the exact 0.3%-base-rate scenario in the question. — ~1h
 
 </small>
 </details>
 
 <details>
-<summary><samp>q5 · ai-llm · reranker-cross-encoder · pre 2 → post 2 · ceiling —</samp></summary>
+<summary><samp>q5 · backend · postgres-mvcc-bloat · pre 2 → post 2 · ceiling —</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A RAG system over a 2M-document corpus uses a bi-encoder (e.g., a sentence-transformer) to embed documents and queries, then retrieves the top-50 by cosine similarity. Faithfulness evaluations show the retrieved set often contains the right document but ranked at position 20-40, so the top-5 passed into the LLM context misses it. A teammate proposes adding a cross-encoder reranker over the top-50 before truncating to top-5. Explain the architectural distinction between a bi-encoder and a cross-encoder, why a cross-encoder produces better relevance ranking at the cost that prevents you from using it as the first-stage retriever, and what the two-stage retrieve-then-rerank pattern gives up in exchange for the improved top-k quality.
+**Scenario:** A Postgres-backed service has a nightly analytics job that opens a single transaction, runs a series of large read-only `SELECT` queries against several core tables (`orders`, `users`, `events`), and commits about 90 minutes later. Over the past two months, performance on those same tables during the day has degraded: query latency has roughly doubled, and `pg_stat_user_tables` shows `n_dead_tup` climbing into the tens of millions on `orders` even though `autovacuum` is running on schedule and completing without errors. Explain the mechanism connecting the nightly read-only transaction to the daytime degradation. Why doesn't autovacuum reclaim the dead tuples it visits? What concretely would you change about the analytics job to fix this, and what tradeoff does that change impose on the analytics workload itself?
 
  
 
-**Refinement:** You said 'the cross encoder does it both ways (two pass, forward back)'. Clarify: what is the actual input construction difference between a bi-encoder and a cross-encoder at inference time, and why does that difference prevent precomputing and caching document representations?
+**Refinement:** You said 'the autovaccum cant reclaim the dead tuples, how can it when the query latency is just cascading and causes incoherence'. Clarify: what specific internal Postgres bookkeeping value does the long-running transaction hold in place, and how does that value determine which dead tuples autovacuum is permitted to remove?
 
  
 
-**Assessment:** The answer correctly identified that two-stage retrieve-then-rerank trades latency and throughput for improved top-k quality, which is one part of the B3 articulation. However, the load-bearing architectural distinction — that a cross-encoder jointly encodes the concatenated query and document so self-attention runs across both, making the document representation query-dependent and therefore impossible to precompute — was not stated, and was instead replaced by a 'forward vs forward-and-backward pass' and set-theoretic frame that do not correspond to the actual mechanism. The refinement probed exactly this gap and the response introduced additional unfounded vocabulary (hashes of canonicalized tokens, clustering-altered embeddings) rather than producing the canonical input-construction fact. The recall-ceiling giveup of the two-stage pattern was also not surfaced.
+**Assessment:** The answer correctly identifies that the nightly transaction is the cause and that autovacuum is somehow prevented from doing its job, but mis-locates the mechanism in row-level locking rather than in MVCC snapshot visibility. The refinement probe pointed directly at the relevant internal bookkeeping value, and the response moved further from the Postgres model — into driver-level locks, futures, and cache-line concerns — rather than naming the snapshot/xmin horizon. The fix proposal (snapshot the data, isolate phases) has the right shape directionally but is not grounded in what actually pins the horizon, and the named tradeoff (atomicity, fail-closed) is not the tradeoff this fix imposes (loss of cross-query point-in-time consistency).
 
 **Literature**
 
-- [remediation] Sentence-Transformers — Cross-Encoders — 'Bi-Encoder vs. Cross-Encoder' section — the diagram and the two paragraphs immediately following it (the canonical one-page explainer for this exact distinction) — ~10m
-- [remediation] Sentence-Transformers — Retrieve & Re-Rank — The 'Retrieve & Re-Rank Pipeline' diagram and the paragraph stating cross-encoders are not used for retrieval over large collections plus the recall-ceiling note — ~10m
+- [remediation] PostgreSQL Documentation — Chapter 13: Concurrency Control — Ch. 13 §13.1 Introduction and §13.2 Transaction Isolation — read in full to establish that Postgres uses MVCC (not lock-based concurrency for reads), that each transaction sees a snapshot fixed at a defined point, and that readers do not block writers. — ~45m
+- [remediation] PostgreSQL Documentation — Routine Vacuuming — Ch. 25 §25.1 Routine Vacuuming — specifically §25.1.5 'Preventing Transaction ID Wraparound Failures' and the surrounding discussion of OldestXmin / removable cutoff; pair with §13.3 to see how a running transaction's xmin holds the horizon. — ~30m
 
 </small>
 </details>
