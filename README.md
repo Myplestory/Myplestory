@@ -47,10 +47,10 @@ calibration  b3 "practitioner"                    rotation bias   underindexed-w
 
                                               b₂  b3  b₄
 q1  systems-distributedleader-lease-expiry     ₃   2   ₂
-q2  ai-llm             embedding-cache         ₃   2   ₂
-q3  frontend           browser-event-loop      ₂   2   ₁
+q2  ai-llm             embedding-cache         ₃   2   ₁
+q3  frontend           browser-event-loop      ₂   1   ₁
 q4  ml-engineering     auc-vs-pr-curve-under   ₁   1   ₁
-q5  backend            postgres-mvcc-bloat     ₂   2   ₂
+q5  backend            postgres-mvcc-bloat     ₂   1   ₁
 
 gaps         auc-vs-pr-curve-under-imbalance · browser-event-loop-microtask-macrotask · embedding-cache-invalidation · fencing-token-monotonicity
 
@@ -73,18 +73,18 @@ band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 
  
 
-**Assessment:** The question targeted recognition of the canonical fencing-token pattern: a monotonic epoch issued with each lease, enforced storage-side atomically with the write. The response identified the right problem family (stale-write after pause) and the right failure surface (the store accepted a write it should have rejected), but reached for an event-sourcing/reconciliation primitive instead of the storage-side monotonic-token primitive. The refinement probe explicitly asked what property of the metadata forces the store to reject a lower-epoch write; the answer responded with provenance, election-membership, and Byzantine fault tolerance — escalating to a heavier primitive class rather than naming monotonicity and storage-side enforcement. The gap is in recognizing that the store, not the client, must be the enforcement point, and that the enforcement is a single atomic compare-and-write on a token, not a reconciliation protocol.
+**Assessment:** The response identifies the failure domain (stale-leader writes under self-undetectable pause) but commits to the wrong primitive when directly probed: client-side reconciliation with provenance/chain-of-custody metadata, rather than storage-side monotonic enforcement atomic with the write. The refinement narrowed the question to exactly the property that must hold at the store, and the answer escalated into Byzantine-fault-tolerance territory — a category error, since the scenario is crash-stop with a paused node that cannot detect its own suspension. The gap is in recognizing that the load-bearing change is store-side, not client-side: the paused node, by definition, cannot reconcile before writing because it does not know it was paused. The TTL-magnitude argument is also imprecise — the reason short TTL does not fix the class is that pause duration is unbounded in principle, not that TTL introduces a cache-coherency surface.
 
 **Literature**
 
-- [remediation] How to do distributed locking — Sections 'Is Redlock safe?' through 'Making the lock safe with fencing' — the diagram showing client 1 pausing, lease expiring, client 2 acquiring, and the store rejecting client 1's late write because its fencing token is lower than client 2's — ~25m
-- [remediation] Designing Data-Intensive Applications — Ch. 8 §Process Pauses (pp. 295–299) and §The Truth Is Defined by the Majority — 'Fencing tokens' (pp. 301–304) — ~1h 15m
+- [remediation] How to do distributed locking — §'Making the lock safe with fencing' — the GC-pause diagram and the storage-side reject-if-token-less-than-max rule — ~25m
+- [remediation] Designing Data-Intensive Applications — Ch. 8 §'Process Pauses' (pp. 295–299) and §'The Truth Is Defined by the Majority — Fencing tokens' (pp. 301–304) — ~2h
 
 </small>
 </details>
 
 <details>
-<summary><samp>q2 · ai-llm · embedding-cache-invalidation · pre 2 → post 2 · ceiling b1 · transitional b2</samp></summary>
+<summary><samp>q2 · ai-llm · embedding-cache-invalidation · pre 2 → post 2 · ceiling — · transitional b1–b2</samp></summary>
 
 <small>
 
@@ -98,18 +98,18 @@ band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 
  
 
-**Assessment:** The question's mechanism gate is naming why v1 and v2 embeddings are incomparable at the retrieval level — specifically the dimensionality mismatch (768 vs 1536 cannot share an ANN index) and the vector-space non-alignment between independently trained bi-encoders, so similarity scores across the two are not on the same scale. The response identifies that mixing is bad and reaches for 'contamination' as a metaphor, but never names the geometric property, never commits to a concrete deployment shape, and never enumerates what the cache key must contain. The refinement probe targeted exactly the missing primitive ('what property makes the results incomparable') and the answer remained at the metaphor level while deferring the deployment commitment to 'operators'. The gap is in the bi-encoder retrieval contract and the model-version cache-key invariant.
+**Assessment:** The response correctly senses that v1 and v2 embeddings cannot coexist in one index and that lazy overwrite corrupts retrieval, but never names the property that makes them incomparable — the dimensionality mismatch is the most concrete signal in the scenario (768 vs 1536) and is not mentioned, and the more general bi-encoder vector-space property is described only by metaphor. The refinement probe asked for that property directly and was answered with the same metaphor. The deployment strategy is enumerated as axes to weigh rather than committed to a shape, and the cache-key answer — the part the question explicitly required — is deferred to operator judgement rather than specified as a composite of identifiers. The gap is in naming the retrieval-layer mechanism and committing to the cache-key composition that prevents recurrence.
 
 **Literature**
 
-- [remediation] Sentence-Transformers: Semantic Search & Bi-Encoder Retrieval — Semantic Search §'Background' and §'Symmetric vs. Asymmetric Semantic Search' — the bi-encoder contract: query and corpus embeddings must come from the same model to be comparable in the shared vector space — ~25m
-- [remediation] Designing Data-Intensive Applications — Ch. 4 §'Schema Evolution' and Ch. 11 §'Reprocessing Data for Application Evolution', pp. 111–128 and pp. 461–467 — dual-write / dual-read patterns and the derived-data reprocessing playbook that maps directly onto v1/v2 index cutover — ~1h 15m
+- [remediation] Semantic Search with Sentence-Transformers — Semantic Search §'Symmetric vs. Asymmetric Semantic Search' and §'Manual Implementation' — the requirement that query and corpus be encoded by the same model for cosine/dot-product scores to be meaningful, plus the dimensionality contract of the index — ~25m
+- [remediation] Designing Data-Intensive Applications — Ch. 11 §'Reprocessing Data for Application Evolution', pp. 461–467 — the derived-data reprocessing pattern: build new derived dataset alongside old, validate, atomically cut over — ~1h 30m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q3 · frontend · browser-event-loop-microtask-macrotask · pre 2 → post 2 · ceiling — · transitional b1</samp></summary>
+<summary><samp>q3 · frontend · browser-event-loop-microtask-macrotask · pre 2 → post 1 · ceiling —</samp></summary>
 
 <small>
 
@@ -123,12 +123,12 @@ band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 
  
 
-**Assessment:** The diagnosis hinges on a specific event-loop ordering rule that the answer never names, despite the refinement probe targeting it directly. The response uses microtask/macrotask vocabulary but inverts the roles — describing the main loop as a macrotask that delegates work via microtasks, and the refinement compounds this by claiming event-loop slots are 'allocated at compile'. The two mitigation mechanisms (startTransition vs setTimeout(0) chunking) are both endorsed without committing to which actually breaks the flood and why, leaving the central B3 'why is this mechanism sufficient' question unanswered. The gap is in the HTML spec event-loop algorithm and how React 18's concurrent renderer interacts with it.
+**Assessment:** The answer identifies the symptom surface (main thread, microtasks, render blocking) but does not engage with the actual event-loop ordering rule that the scenario hinges on, and the refinement made this worse by introducing a fabricated 'compile-time slot allocation' model that has no basis in the HTML spec or any browser implementation. The recommendation prioritizes the wrong primitive between the two offered fixes and declines to dismiss either, which would mislead a team about which lever actually moves input responsiveness. The gap is in the precise spec-level rule governing when microtask queues are drained relative to input event dispatch and rendering, and how fetch-initiation cadence drives resolution cadence which drives that drain.
 
 **Literature**
 
-- [remediation] In The Loop (JSConf.Asia) — Full talk (~35 min) — the canonical visual explanation of how the HTML spec event loop runs one task, drains all microtasks to empty, then renders/handles input, and exactly how promise floods starve input. — ~35m
-- [remediation] React Docs — useTransition & Concurrent Rendering — useTransition reference page + linked 'React 18 release notes — Concurrent Rendering' section on interruptibility (https://react.dev/blog/2022/03/29/react-v18). Read together as one focused chapter on why startTransition makes renders yield to input. — ~45m
+- [remediation] Tasks, microtasks, queues and schedules — Full article — read end-to-end. The canonical, illustrated reference for the exact rule the refinement probe targeted: promise callbacks queue as microtasks, the microtask queue drains to empty before the next macrotask, and macrotasks (including input/scroll dispatch and rendering opportunities) cannot interleave with a long microtask drain. Includes the worked example of a setTimeout vs Promise.resolve ordering test that disambiguates the two queues. — ~30m
+- [remediation] HTML Living Standard §8.1.6.3 — Event loop processing model — §8.1.6.3 'Processing model' — read steps 1 (run oldest task), 6 (microtask checkpoint), and 11 (rendering opportunity). The normative source for why a flood of resolved promises starves both input dispatch and paint: rendering is step 11, after the microtask checkpoint at step 6 has drained the queue to empty. — ~20m
 
 </small>
 </details>
@@ -148,18 +148,18 @@ band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 
  
 
-**Assessment:** The answer does not satisfy the B3 mechanism invariant for ml-engineering: it never identifies the production-ML concern (a ranking metric being misread as an operating-point metric) and never names the standard primitives — TPR/FPR as the AUC-ROC axes, the FPR-denominator argument for why low base rate inflates AUC, the PR curve / average precision for development comparison, or precision@k for the capacity-constrained threshold. The refinement probe directly named 'the two axes' and asked for the imbalance-insensitivity mechanism; the response explicitly declined the axes and substituted invented vocabulary. The gap is at the level of standard vocabulary and the canonical decomposition of a ranking-vs-operating-point question.
+**Assessment:** The answer did not identify the scenario as a metric-selection and operating-point problem: AUC-ROC was not defined, the role of the negative-class denominator under a 0.3% base rate was not articulated, and no alternative development-time curve or capacity-derived threshold was proposed. The refinement probe asked directly for the two axes of AUC-ROC and the answerer acknowledged not knowing them, then substituted a non-standard 'convergence/coherence' framing. The business constraint (500 reviews out of 40,000 daily claims) was rejected rather than translated into an operating-point derivation, and the proposed remediation (multi-threshold ensembling with deterministic fusion) misroutes the problem from threshold selection to model architecture.
 
 **Literature**
 
-- [remediation] Hands-On Machine Learning with Scikit-Learn, Keras, and TensorFlow (3rd ed.) — Chapters 2–4 (end-to-end ML project; classification — precision, recall, F1, ROC curve, ROC AUC; training models — learning curves). Read these three chapters together; the gap is foundational vocabulary for classification metrics and threshold selection. — ~25h
-- [remediation] The Relationship Between Precision-Recall and ROC Curves — §3 'ROC and PR' and §4 'Theorem 3.2' — the formal demonstration that PR curves give a more informative picture than ROC curves when the negative class is large, which is the exact 0.3%-base-rate scenario in the question. — ~1h
+- [remediation] Hands-On Machine Learning with Scikit-Learn, Keras & TensorFlow (3rd ed.) — Ch. 3 'Classification' — full chapter: confusion matrix, precision/recall, the precision/recall trade-off, the ROC curve, and the ROC vs PR curve guidance for imbalanced data — ~2h 30m
+- [remediation] The Relationship Between Precision-Recall and ROC Curves — §3–4 — the proof that a curve dominates in ROC iff it dominates in PR space, and the explicit account of why ROC underweights false positives when negatives dominate; ~10 pages — ~3h
 
 </small>
 </details>
 
 <details>
-<summary><samp>q5 · backend · postgres-mvcc-bloat · pre 2 → post 2 · ceiling —</samp></summary>
+<summary><samp>q5 · backend · postgres-mvcc-bloat · pre 2 → post 1 · ceiling —</samp></summary>
 
 <small>
 
@@ -173,12 +173,12 @@ band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 
  
 
-**Assessment:** The answer correctly identifies that the nightly transaction is the cause and that autovacuum is somehow prevented from doing its job, but mis-locates the mechanism in row-level locking rather than in MVCC snapshot visibility. The refinement probe pointed directly at the relevant internal bookkeeping value, and the response moved further from the Postgres model — into driver-level locks, futures, and cache-line concerns — rather than naming the snapshot/xmin horizon. The fix proposal (snapshot the data, isolate phases) has the right shape directionally but is not grounded in what actually pins the horizon, and the named tradeoff (atomicity, fail-closed) is not the tradeoff this fix imposes (loss of cross-query point-in-time consistency).
+**Assessment:** The response correctly identified the nightly transaction as the trigger and proposed shortening or isolating it, but mis-located the mechanism in row-level locking and 'cascading lock contention,' which the SELECT's lock mode actually precludes. The refinement probe was precise — it asked for the specific internal bookkeeping value the long-running transaction holds — and the answer did not converge on the relevant Postgres concept, instead generating invented details about driver structs, futures, and cache-line memory layout. The gap is in the visibility/reclamation model that governs when vacuum is permitted to remove a dead tuple, and in the lock-mode semantics that rule out the contention hypothesis.
 
 **Literature**
 
-- [remediation] PostgreSQL Documentation — Chapter 13: Concurrency Control — Ch. 13 §13.1 Introduction and §13.2 Transaction Isolation — read in full to establish that Postgres uses MVCC (not lock-based concurrency for reads), that each transaction sees a snapshot fixed at a defined point, and that readers do not block writers. — ~45m
-- [remediation] PostgreSQL Documentation — Routine Vacuuming — Ch. 25 §25.1 Routine Vacuuming — specifically §25.1.5 'Preventing Transaction ID Wraparound Failures' and the surrounding discussion of OldestXmin / removable cutoff; pair with §13.3 to see how a running transaction's xmin holds the horizon. — ~30m
+- [remediation] PostgreSQL Documentation — Concurrency Control — Chapter 13: Concurrency Control — §13.1 Introduction to MVCC, §13.2 Transaction Isolation, §13.3 Explicit Locking (focus on §13.3.1 Table-level Locks for AccessShareLock semantics) — ~1h 30m
+- [remediation] PostgreSQL Documentation — Routine Vacuuming — Chapter 25 §25.1 Routine Vacuuming — especially §25.1.5 Preventing Transaction ID Wraparound Failures (OldestXmin cutoff) and §25.1.6 The Autovacuum Daemon; cross-reference pg_stat_activity.backend_xmin in the Monitoring chapter — ~45m
 
 </small>
 </details>
