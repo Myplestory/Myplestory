@@ -33,7 +33,7 @@ currently working on low latency infra, compliance systems, evaluation harnesses
  
 
 <details>
-<summary><samp>fortifai · self-audit loop</samp></summary>
+<summary><samp>fortifai · self-audit loop · streak 1d</samp></summary>
 
 <sub><samp><i>self-audit: scenario-based time-pressured recall, cross-domain breadth, b3-calibrated<br>
 invariant: zero outside assistance. no docs, no ai, no peers. 10m/response, 5m/single refinement<br>
@@ -41,144 +41,142 @@ breadth: systems/distributed, backend, sre, ml, ai/llm, frontend, data, security
 bar: consistent ≥3 across all 8 swe fields</i></samp></sub>
 
 ```
-industry     swe                                  updated         2026-05-23
-scope        cross-domain · grab-bag              duration        1h 6m
+industry     swe                                  updated         2026-05-25
+scope        cross-domain · grab-bag              duration        58m 45s
 calibration  b3 "practitioner"                    rotation bias   underindexed-weighted
 
                                               b₂  b3  b₄
-q1  systems-distributedleader-lease-expiry     ₃   2   ₂
-q2  ai-llm             embedding-cache         ₃   2   ₁
-q3  frontend           browser-event-loop      ₂   1   ₁
-q4  ml-engineering     auc-vs-pr-curve-under   ₁   1   ₁
-q5  backend            postgres-mvcc-bloat     ₂   1   ₁
-
-gaps         auc-vs-pr-curve-under-imbalance · browser-event-loop-microtask-macrotask · embedding-cache-invalidation · fencing-token-monotonicity
+q1  sre                dns-ttl-failover        ₃   3   ₂
+q2  security           clickjacking            ₄   3   ₂
+q3  ml-engineering     train-test              ₃   3   ₂
+q4  data-engineering   exactly-once-sink       ₃   3   ₂
+q5  ai-llm             llm-as-judge            ₄   3   ₂
 
 score (dreyfus)    1 (novice) → 3 (competent) → 5 (mastered)
 band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 ```
 
 <details>
-<summary><samp>q1 · systems-distributed · leader-lease-expiry · pre 2 → post 2 · ceiling — · transitional b1–b2</samp></summary>
+<summary><samp>q1 · sre · dns-ttl-failover-tradeoff · pre 2 → post 3 · ceiling — · transitional b1–b3</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A coordination service issues 30-second leases to designate one node as the 'primary writer' for a shared key-value store. The shared store accepts any write that arrives with a current lease ID. During an incident, the primary writer experienced a 45-second stop-the-world GC pause, then resumed and immediately wrote to the store using what it believed was its valid lease — but by then the coordination service had granted the lease to a new primary, and the new primary had already written. Both writes were accepted; the second writer's data was silently overwritten by the first. Explain the mechanism that caused this failure. Then describe what the shared store would need to do (and what the lease service would need to issue) to make this class of bug impossible. Be specific about why simply shortening the lease TTL to 5 seconds does not fix it.
+**Scenario:** A regional SaaS company runs api.example.com behind a primary load balancer in us-east-1. Their disaster recovery plan calls for failing over to us-west-2 by updating the DNS A record. The team has set the record's TTL to 300 seconds. During a recent us-east-1 outage, they updated DNS within 2 minutes of the incident declaration, but customer reports of errors continued for over 30 minutes — far longer than the TTL would suggest. Explain the mechanism that causes traffic to persist on a failed endpoint longer than the configured TTL, and describe the tradeoff involved in setting the TTL much lower (e.g., 30 seconds) to mitigate it. What complementary mechanism does not depend on DNS at all, and why is it generally preferred for fast failover?
 
  
 
-**Refinement:** You said 'shared state as i already explained needs the metadata'. Clarify: what specific property of that metadata forces the store to reject a write from a node whose lease epoch is lower than the last accepted write's epoch, even if the writing node believes its lease is current?
+**Refinement:** You said 'direct sockets/control over the piping not reliant on dns propogation'. Clarify: what specific property of this mechanism allows a load balancer or traffic manager to detect a failed endpoint and redirect connections without waiting for any cache to expire?
 
  
 
-**Assessment:** The response identifies the failure domain (stale-leader writes under self-undetectable pause) but commits to the wrong primitive when directly probed: client-side reconciliation with provenance/chain-of-custody metadata, rather than storage-side monotonic enforcement atomic with the write. The refinement narrowed the question to exactly the property that must hold at the store, and the answer escalated into Byzantine-fault-tolerance territory — a category error, since the scenario is crash-stop with a paused node that cannot detect its own suspension. The gap is in recognizing that the load-bearing change is store-side, not client-side: the paused node, by definition, cannot reconcile before writing because it does not know it was paused. The TTL-magnitude argument is also imprecise — the reason short TTL does not fix the class is that pause duration is unbounded in principle, not that TTL introduces a cache-coherency surface.
+**Assessment:** The response identifies the right problem space (caching / propagation / connectivity probing) but names the wrong mechanism for DNS failover persistence: it attributes traffic persistence to hop-by-hop propagation through a network topology rather than to downstream resolver and client-side cache non-compliance with the authoritative TTL. The refinement correctly observes that a TCP handshake fails closed regardless of DNS cache state — a valid property of the complementary mechanism — but never names the architectural pattern that actually delivers fast failover at the named layer. The cost axis of lowering TTL is framed quantitatively but through an incorrect model. The gap is in knowing which layer of the resolution-and-routing stack actually holds traffic past TTL, and what architectural construct removes DNS from the failover path entirely.
 
 **Literature**
 
-- [remediation] How to do distributed locking — §'Making the lock safe with fencing' — the GC-pause diagram and the storage-side reject-if-token-less-than-max rule — ~25m
-- [remediation] Designing Data-Intensive Applications — Ch. 8 §'Process Pauses' (pp. 295–299) and §'The Truth Is Defined by the Majority — Fencing tokens' (pp. 301–304) — ~2h
+- [remediation] Site Reliability Engineering: How Google Runs Production Systems — Ch. 19 'Load Balancing at the Frontend' — full chapter, with particular attention to §DNS and §Virtual IP Addresses — ~45m
+- [remediation] DNS and BIND, 5th Edition — Ch. 10 §TTLs and Negative Caching — the chapter on how resolvers actually treat TTL values, including the cases where TTLs are ignored or clamped — ~30m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q2 · ai-llm · embedding-cache-invalidation · pre 2 → post 2 · ceiling — · transitional b1–b2</samp></summary>
+<summary><samp>q2 · security · clickjacking · pre 2 → post 3 · ceiling b2 · transitional b3</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A documentation-search RAG system caches embeddings for ~2 million corpus chunks in a vector store. The team upgrades from embedding model v1 (768-dim) to embedding model v2 (1536-dim, different training corpus, better recall on technical queries). They want to deploy v2 without a 12-hour full-corpus re-embedding job blocking the rollout. A junior engineer proposes: 'Just re-embed lazily — when a chunk is retrieved by v1 and ranked low, re-embed it with v2 and overwrite the entry.' Explain why this proposal is broken at the retrieval level (not just operationally). Then commit to a deployment strategy that handles the transition correctly, and name what the cache key for an embedding entry must include to prevent this entire class of bug from recurring on future model upgrades.
+**Scenario:** A consumer banking web app exposes a 'Transfer Funds' page at /transfer that uses session cookies for authentication and a synchronizer CSRF token on the form. A security reviewer reports that an attacker can host a page on evil.example that loads /transfer in an invisible iframe, overlays decoy UI on top, and tricks a logged-in victim into clicking 'Confirm Transfer' through the overlay. Explain why the existing CSRF token does not defend against this attack, name the vulnerability class, and identify the specific HTTP response header (and its directive) that is the primary structural mitigation. Compare this header against the older X-Frame-Options header — what does the newer mechanism give you that the older one does not?
 
  
 
-**Refinement:** You said 'The ideal balance for this task would be (if allowed) to 1) slowly embed away from the original db'. Clarify: how does query routing work during the transition period when v1 and v2 indexes coexist — specifically, what property of a query result from each index makes them incomparable, and how does your strategy avoid returning a mixed ranking to the user?
+**Refinement:** You said 'the request does come from the "resource" that is legitimate aka the transfer page'. Clarify: what property of the CSRF token mechanism makes it blind to whether the legitimate page is rendered inside an attacker-controlled frame versus loaded directly by the user?
 
  
 
-**Assessment:** The response correctly senses that v1 and v2 embeddings cannot coexist in one index and that lazy overwrite corrupts retrieval, but never names the property that makes them incomparable — the dimensionality mismatch is the most concrete signal in the scenario (768 vs 1536) and is not mentioned, and the more general bi-encoder vector-space property is described only by metaphor. The refinement probe asked for that property directly and was answered with the same metaphor. The deployment strategy is enumerated as axes to weigh rather than committed to a shape, and the cache-key answer — the part the question explicitly required — is deferred to operator judgement rather than specified as a composite of identifiers. The gap is in naming the retrieval-layer mechanism and committing to the cache-key composition that prevents recurrence.
+**Assessment:** The answer reached the correct intuition that CSRF tokens are structurally blind to the rendering context, and the refinement articulated that intuition cleanly (the token has no reconciliation with the root render or call-stack provenance — only that the user holds the session). What is missing is the standard vocabulary: the vulnerability class (clickjacking / UI redress), the specific header and directive that the question explicitly asked for, and the comparison against the older header. The answer also conflates CSP with CORS and SameSite, which are distinct mitigations for distinct threat classes — a B3 reviewer needs the primitives named precisely. The reading should land on the OWASP clickjacking taxonomy and the W3C CSP Level 2 definition of frame-ancestors.
 
 **Literature**
 
-- [remediation] Semantic Search with Sentence-Transformers — Semantic Search §'Symmetric vs. Asymmetric Semantic Search' and §'Manual Implementation' — the requirement that query and corpus be encoded by the same model for cosine/dot-product scores to be meaningful, plus the dimensionality contract of the index — ~25m
-- [remediation] Designing Data-Intensive Applications — Ch. 11 §'Reprocessing Data for Application Evolution', pp. 461–467 — the derived-data reprocessing pattern: build new derived dataset alongside old, validate, atomically cut over — ~1h 30m
+- [remediation] OWASP Clickjacking Defense Cheat Sheet — §Defending with Content Security Policy frame-ancestors directive AND §Defending with X-Frame-Options Response Headers — read these two sections to get the named vulnerability class, the exact header/directive, and the XFO-vs-frame-ancestors comparison the question asked for — ~20m
+- [remediation] Content Security Policy Level 3 (W3C Working Draft) — frame-ancestors directive — §6.1 frame-ancestors — the directive grammar (source-list with 'none', 'self', host-source, scheme-source), the rule that frame-ancestors takes precedence over X-Frame-Options when both are present, and why it is the standardized replacement — ~15m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q3 · frontend · browser-event-loop-microtask-macrotask · pre 2 → post 1 · ceiling —</samp></summary>
+<summary><samp>q3 · ml-engineering · train-test-contamination · pre 3 → post 3 · ceiling b1 · transitional b2–b3</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A dashboard renders 200 widgets on mount. Each widget calls `fetch('/api/widget/' + id)` in a `useEffect`, and on resolution calls `setState` to update that widget's data. Users report that during the initial load, clicking buttons or scrolling feels frozen for 2-3 seconds even though the network tab shows responses arriving spread out over time. The team's first instinct is 'we need to debounce setState' — explain why that diagnosis misidentifies the mechanism. Then explain what is actually consuming the main thread in that window, distinguishing between microtasks and macrotasks in the browser event loop, and describe what concretely changes about scheduling if the team wraps each `setState` call in `startTransition` versus if they batch the fetches into chunks of 20 with a `setTimeout(0)` between chunks. Which actually restores input responsiveness and why?
+**Scenario:** A medical imaging team is training a binary classifier to detect a condition from chest X-rays. Their dataset contains 50,000 images from 8,000 patients (some patients have multiple images taken weeks apart). They use a standard random 80/20 train/test split at the image level and report 0.94 AUC on the held-out test set. When the model is deployed to a new hospital, AUC drops to 0.71. Explain the specific data-handling mechanism that inflated the offline metric, why the random image-level split was the wrong primitive for this dataset, and what splitting strategy you would commit to instead. Name one scikit-learn primitive that implements the correct strategy, and explain what residual generalization gap remains even after fixing the split.
 
  
 
-**Refinement:** You said 'the main loop is blocked, hence the 2-3 sec when microtasks are not partitioned/designed thoughtfully and result is propogation of execution pressure through blocks'. Clarify: what specifically in the browser event loop's ordering rules causes a flood of resolved Promise callbacks to prevent input events from being processed, and how does that differ from a macrotask blocking the same loop?
+**Refinement:** You said 'the sampling of 80-20 could have been reinforcing same patient/multiple image thus bias in the model'. Clarify: what specific statistical relationship between a patient's training images and that same patient's test images causes the AUC to be inflated, rather than merely unrepresentative?
 
  
 
-**Assessment:** The answer identifies the symptom surface (main thread, microtasks, render blocking) but does not engage with the actual event-loop ordering rule that the scenario hinges on, and the refinement made this worse by introducing a fabricated 'compile-time slot allocation' model that has no basis in the HTML spec or any browser implementation. The recommendation prioritizes the wrong primitive between the two offered fixes and declines to dismiss either, which would mislead a team about which lever actually moves input responsiveness. The gap is in the precise spec-level rule governing when microtask queues are drained relative to input event dispatch and rendering, and how fetch-initiation cadence drives resolution cadence which drives that drain.
+**Assessment:** The response correctly identified patient-level as the right grouping unit but, when probed for the specific statistical mechanism that inflates AUC, defaulted to a representation/oversampling explanation rather than the dependence-and-leakage explanation the question targeted. The refinement was an opportunity to recover by naming patient-identity confounding (shared anatomy, positioning, scanner artifacts) as the channel through which train-set information bleeds into the test set; instead the answer doubled down on the oversampling framing and invented private terminology ('layer 1/layer 2') in place of canonical vocabulary. The sklearn primitive (GroupKFold/GroupShuffleSplit) was not retrieved, and the residual generalization gap was described abstractly rather than as concrete cross-site/cross-scanner domain shift.
 
 **Literature**
 
-- [remediation] Tasks, microtasks, queues and schedules — Full article — read end-to-end. The canonical, illustrated reference for the exact rule the refinement probe targeted: promise callbacks queue as microtasks, the microtask queue drains to empty before the next macrotask, and macrotasks (including input/scroll dispatch and rendering opportunities) cannot interleave with a long microtask drain. Includes the worked example of a setTimeout vs Promise.resolve ordering test that disambiguates the two queues. — ~30m
-- [remediation] HTML Living Standard §8.1.6.3 — Event loop processing model — §8.1.6.3 'Processing model' — read steps 1 (run oldest task), 6 (microtask checkpoint), and 11 (rendering opportunity). The normative source for why a flood of resolved promises starves both input dispatch and paint: rendering is step 11, after the microtask checkpoint at step 6 has drained the queue to empty. — ~20m
+- [remediation] Data Leakage in Machine Learning: A Survey — §4 'Train-test contamination' and §4.2 'Group leakage' — specifically the medical-imaging worked example where multiple scans per patient appear on both sides of the split, and the formal statement that the unit of statistical independence is the entity (patient), not the record (image). — ~45m
+- [remediation] scikit-learn User Guide §3.1 Cross-validation: GroupKFold and StratifiedGroupKFold — The 'Cross-validation iterators for grouped data' subsection — definition of GroupKFold, GroupShuffleSplit, and StratifiedGroupKFold; the `groups` parameter contract; and the worked example where each sample's group label (e.g., patient_id) forces all of that group's samples into the same fold. — ~20m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q4 · ml-engineering · auc-vs-pr-curve-under-imbalance · pre 1 → post 1 · ceiling —</samp></summary>
+<summary><samp>q4 · data-engineering · exactly-once-sink · pre 2 → post 3 · ceiling — · transitional b1–b3</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A team is building a binary classifier for detecting fraudulent insurance claims. Base rate is 0.3% positive. Their first model achieves AUC-ROC of 0.94 on a held-out set, which the PM calls 'excellent.' The deployed model, used at a fixed decision threshold of 0.5, flags only 8% of true fraud cases (recall = 0.08) while producing a precision of 62%. The PM is confused: 'how can AUC be 0.94 if we're catching almost no fraud?' Explain to the PM what AUC-ROC actually measures, why it can look strong on heavily imbalanced data while the deployed model performs poorly, and what specific metric and visualization you would use instead to (a) compare models during development and (b) choose the operating threshold given a business constraint of 'we can manually review at most 500 flagged claims per day out of ~40,000 daily claims.'
+**Scenario:** A data engineering team operates a Kafka → Spark Structured Streaming → Postgres pipeline that aggregates event counts per user per hour and upserts them into an `hourly_user_events` table. They observe that after consumer restarts (e.g., during deploys or node failures), some hourly counts in Postgres are higher than ground truth — duplicates have leaked through despite the streaming job using checkpointing. The team's current code pattern is: read batch → write to Postgres via JDBC → commit Kafka offsets. Explain the specific failure-window mechanism that produces these duplicates, why checkpointing alone does not give exactly-once semantics across a heterogeneous sink, and what concrete change to the write logic would make the pipeline effectively-once at the Postgres sink. What property must the sink write possess for your fix to work?
 
  
 
-**Refinement:** You said 'AUC-ROC measures convergence on a designated metric, not a overall'. Clarify: what two axes are being integrated over to produce the AUC-ROC score, and why those axes make the metric insensitive to class imbalance?
+**Refinement:** You said 'make the commit not at kafka level, but at postgres outbox level'. Clarify: what property of the Postgres write operation itself prevents a duplicate upsert from landing when the job replays the same batch after a crash between the write and the offset commit?
 
  
 
-**Assessment:** The answer did not identify the scenario as a metric-selection and operating-point problem: AUC-ROC was not defined, the role of the negative-class denominator under a 0.3% base rate was not articulated, and no alternative development-time curve or capacity-derived threshold was proposed. The refinement probe asked directly for the two axes of AUC-ROC and the answerer acknowledged not knowing them, then substituted a non-standard 'convergence/coherence' framing. The business constraint (500 reviews out of 40,000 daily claims) was rejected rather than translated into an operating-point derivation, and the proposed remediation (multi-threshold ensembling with deterministic fusion) misroutes the problem from threshold selection to model architecture.
+**Assessment:** The answer locates the failure window at the Postgres-write / Kafka-offset-commit boundary and the refinement surfaces ON CONFLICT as the relevant Postgres primitive, but the reasoning around why that primitive closes the replay gap is missing: the response frames the fix as a control-flow inversion ('commit pre-approved at PG level, kafka simply confirms') rather than as an idempotency property on a deterministic key with replace-not-add merge semantics. The standard merge-upsert vocabulary and the explanation of why heterogeneous sinks cannot be covered by checkpoint atomicity alone are the gaps. The refinement narrowed the gap from 'outbox label' to 'ON CONFLICT keyword' but did not close it to a stated mechanism-under-pressure argument.
 
 **Literature**
 
-- [remediation] Hands-On Machine Learning with Scikit-Learn, Keras & TensorFlow (3rd ed.) — Ch. 3 'Classification' — full chapter: confusion matrix, precision/recall, the precision/recall trade-off, the ROC curve, and the ROC vs PR curve guidance for imbalanced data — ~2h 30m
-- [remediation] The Relationship Between Precision-Recall and ROC Curves — §3–4 — the proof that a curve dominates in ROC iff it dominates in PR space, and the explicit account of why ROC underweights false positives when negatives dominate; ~10 pages — ~3h
+- [remediation] Designing Data-Intensive Applications — Ch. 11 §End-to-end argument for databases (pp. 516–520) and §Idempotence (pp. 478–479) — ~1h 30m
+- [remediation] Spark Structured Streaming Programming Guide — Output Sinks and Fault Tolerance Semantics — §Fault Tolerance Semantics and §Using Foreach and ForeachBatch (idempotent JDBC sink pattern) — ~30m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q5 · backend · postgres-mvcc-bloat · pre 2 → post 1 · ceiling —</samp></summary>
+<summary><samp>q5 · ai-llm · llm-as-judge-evaluation · pre 3 → post 3 · ceiling b2 · transitional b3</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A Postgres-backed service has a nightly analytics job that opens a single transaction, runs a series of large read-only `SELECT` queries against several core tables (`orders`, `users`, `events`), and commits about 90 minutes later. Over the past two months, performance on those same tables during the day has degraded: query latency has roughly doubled, and `pg_stat_user_tables` shows `n_dead_tup` climbing into the tens of millions on `orders` even though `autovacuum` is running on schedule and completing without errors. Explain the mechanism connecting the nightly read-only transaction to the daytime degradation. Why doesn't autovacuum reclaim the dead tuples it visits? What concretely would you change about the analytics job to fix this, and what tradeoff does that change impose on the analytics workload itself?
+**Scenario:** A team building a customer support chatbot wants to compare two candidate LLM-backed answer generators (Model A and Model B) on 500 historical support tickets. Without budget for human labeling, they set up an LLM-as-judge pipeline: for each ticket, both A's and B's answers are sent to GPT-4 with a prompt asking 'Which answer is better, Answer 1 or Answer 2?' GPT-4 returns the winner, and they aggregate win rates. A skeptical PM points out the results may be untrustworthy. Identify at least two specific, named biases that LLM-as-judge introduces in this setup, explain the mechanism by which each distorts the win rate, and describe concrete mitigations for each. What is the principled fallback — what kind of evaluation does an LLM-as-judge pipeline approximate, and where does the approximation break down?
 
  
 
-**Refinement:** You said 'the autovaccum cant reclaim the dead tuples, how can it when the query latency is just cascading and causes incoherence'. Clarify: what specific internal Postgres bookkeeping value does the long-running transaction hold in place, and how does that value determine which dead tuples autovacuum is permitted to remove?
+**Refinement:** You said 'pinning the LLM that is judgeing to only focus on the second position allows increased accuracy and reduces hallucination for some reason'. Clarify: what mechanism causes the second-position anchor to reduce bias rather than simply shifting the same bias to consistently favor the second answer?
 
  
 
-**Assessment:** The response correctly identified the nightly transaction as the trigger and proposed shortening or isolating it, but mis-located the mechanism in row-level locking and 'cascading lock contention,' which the SELECT's lock mode actually precludes. The refinement probe was precise — it asked for the specific internal bookkeeping value the long-running transaction holds — and the answer did not converge on the relevant Postgres concept, instead generating invented details about driver structs, futures, and cache-line memory layout. The gap is in the visibility/reclamation model that governs when vacuum is permitted to remove a dead tuple, and in the lock-mode semantics that rule out the contention hypothesis.
+**Assessment:** The response correctly names position bias and rubric-ambiguity as concerns and, under refinement, arrives at the structurally correct position-swap mitigation by reasoning (run both orderings, apply the bias symmetrically, then aggregate) — this matches the published Zheng et al. fix even though the pre-refinement version misstated it as 'always judge the second position'. The substantive gaps are: (1) only two biases surfaced when the canonical taxonomy includes at least position, verbosity, and self-enhancement; (2) the principled-fallback half of the question — what LLM-as-judge approximates and where the approximation breaks — is answered abstractly ('coherence to invariants') rather than concretely (it approximates a human preference panel, and breaks under correlated judge/candidate errors and when the preference signal diverges from the production outcome metric the PM actually cares about); (3) the PM's underlying decision question — can we trust this win rate to pick a model — is never addressed with the construct-validity caveat the situation requires.
 
 **Literature**
 
-- [remediation] PostgreSQL Documentation — Concurrency Control — Chapter 13: Concurrency Control — §13.1 Introduction to MVCC, §13.2 Transaction Isolation, §13.3 Explicit Locking (focus on §13.3.1 Table-level Locks for AccessShareLock semantics) — ~1h 30m
-- [remediation] PostgreSQL Documentation — Routine Vacuuming — Chapter 25 §25.1 Routine Vacuuming — especially §25.1.5 Preventing Transaction ID Wraparound Failures (OldestXmin cutoff) and §25.1.6 The Autovacuum Daemon; cross-reference pg_stat_activity.backend_xmin in the Monitoring chapter — ~45m
+- [remediation] Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena — §3 'LLM-as-a-Judge' and §4 'Limitations and Biases' — position bias, verbosity bias, self-enhancement bias, and the position-swap consistency aggregation — ~1h 15m
+- [remediation] Evaluating Large Language Models: A Comprehensive Survey — §4 'Where to Evaluate' and §5 'How to Evaluate' — pairwise vs reference-based evaluation, construct validity, and when LLM-judge win rates diverge from human preference and from downstream task metrics — ~45m
 
 </small>
 </details>
