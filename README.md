@@ -42,141 +42,143 @@ bar: consistent ≥3 across all 8 swe fields</i></samp></sub>
 
 ```
 industry     swe                                  updated         2026-05-25
-scope        cross-domain · grab-bag              duration        58m 45s
+scope        cross-domain · grab-bag              duration        54m 11s
 calibration  b3 "practitioner"                    rotation bias   underindexed-weighted
 
                                               b₂  b3  b₄
-q1  sre                dns-ttl-failover        ₃   3   ₂
-q2  security           clickjacking            ₄   3   ₂
-q3  ml-engineering     train-test              ₃   3   ₂
-q4  data-engineering   exactly-once-sink       ₃   3   ₂
-q5  ai-llm             llm-as-judge            ₄   3   ₂
+q1  backend            serializable-vs         ₃   2   ₁
+q2  security           open-redirect           ₂   2   ₁
+q3  ml-engineering     regularization-path     ₂   2   ₁
+q4  systems-distributedread-repair             ₂   2   ₁
+q5  frontend           controlled-input        ₂   2   ₁
+
+gaps         anti-entropy · controlled-input-cursor-jump · feature-correlation-l1-instability · l1-vs-l2-mechanism
 
 score (dreyfus)    1 (novice) → 3 (competent) → 5 (mastered)
 band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 ```
 
 <details>
-<summary><samp>q1 · sre · dns-ttl-failover-tradeoff · pre 2 → post 3 · ceiling — · transitional b1–b3</samp></summary>
+<summary><samp>q1 · backend · serializable-vs-snapshot-isolation · pre 2 → post 2 · ceiling — · transitional b1–b2</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A regional SaaS company runs api.example.com behind a primary load balancer in us-east-1. Their disaster recovery plan calls for failing over to us-west-2 by updating the DNS A record. The team has set the record's TTL to 300 seconds. During a recent us-east-1 outage, they updated DNS within 2 minutes of the incident declaration, but customer reports of errors continued for over 30 minutes — far longer than the TTL would suggest. Explain the mechanism that causes traffic to persist on a failed endpoint longer than the configured TTL, and describe the tradeoff involved in setting the TTL much lower (e.g., 30 seconds) to mitigate it. What complementary mechanism does not depend on DNS at all, and why is it generally preferred for fast failover?
+**Scenario:** A scheduling app stores on-call shifts in PostgreSQL. The business rule: at least one engineer must be on-call at all times. The handoff transaction reads `SELECT COUNT(*) FROM oncall WHERE shift = 'graveyard' AND active = true` and, if the count is at least 2, sets one engineer's `active` to false. Two engineers click 'go off-call' simultaneously. The app uses the default isolation level (Read Committed). After both transactions commit, zero engineers are on-call. The team proposes upgrading to Repeatable Read. Will that fix it? Explain what anomaly is occurring, why Repeatable Read is or isn't sufficient, and what the correct mechanism is. Identify the tradeoff of your chosen fix.
 
  
 
-**Refinement:** You said 'direct sockets/control over the piping not reliant on dns propogation'. Clarify: what specific property of this mechanism allows a load balancer or traffic manager to detect a failed endpoint and redirect connections without waiting for any cache to expire?
+**Refinement:** You said 'write commited ensures the state is not a "speculative at read" but a "on write commit then we read in and select count(*)" kind of thing'. Clarify: what specific ordering guarantee prevents two concurrent transactions from each reading a count of 2, deciding it is safe to deactivate, and both committing their update — even when writes are atomic?
 
  
 
-**Assessment:** The response identifies the right problem space (caching / propagation / connectivity probing) but names the wrong mechanism for DNS failover persistence: it attributes traffic persistence to hop-by-hop propagation through a network topology rather than to downstream resolver and client-side cache non-compliance with the authoritative TTL. The refinement correctly observes that a TCP handshake fails closed regardless of DNS cache state — a valid property of the complementary mechanism — but never names the architectural pattern that actually delivers fast failover at the named layer. The cost axis of lowering TTL is framed quantitatively but through an incorrect model. The gap is in knowing which layer of the resolution-and-routing stack actually holds traffic past TTL, and what architectural construct removes DNS from the failover path entirely.
+**Assessment:** The answer never names the anomaly under test (write-skew) and never names the actual isolation levels relevant to the question (Snapshot Isolation, Serializable). It invents an isolation level ('write committed') that does not exist in the SQL standard or in PostgreSQL, and misattributes the fix to ordering atomic writes ahead of reads — inverting the real mechanism, since both transactions' reads were already valid within their own snapshots; the violation is a property of the conjunction of disjoint writes against a predicate. The refinement probe correctly redirected attention to the read snapshot, and the answer surfaced MVCC by name, but treated MVCC as the reconciliation mechanism rather than as the substrate of snapshot isolation that is itself the reason write-skew is possible. The gap is in distinguishing what snapshot isolation guarantees (per-transaction consistent reads, first-committer-wins on the same row) from what it does not (multi-row predicate invariants), and in knowing the canonical Postgres-level fix.
 
 **Literature**
 
-- [remediation] Site Reliability Engineering: How Google Runs Production Systems — Ch. 19 'Load Balancing at the Frontend' — full chapter, with particular attention to §DNS and §Virtual IP Addresses — ~45m
-- [remediation] DNS and BIND, 5th Edition — Ch. 10 §TTLs and Negative Caching — the chapter on how resolvers actually treat TTL values, including the cases where TTLs are ignored or clamped — ~30m
+- [remediation] Designing Data-Intensive Applications — Chapter 7 — Transactions, especially §Snapshot Isolation and Repeatable Read (pp. 237–242), §Write Skew and Phantoms (pp. 246–251), and §Serializability — Serializable Snapshot Isolation (SSI) (pp. 261–266). — ~4h
+- [remediation] PostgreSQL Documentation — Chapter 13: Concurrency Control — §13.2.2 Repeatable Read Isolation Level and §13.2.3 Serializable Isolation Level — read both to see Postgres's explicit statement that Repeatable Read = Snapshot Isolation and does not detect write-skew, and that SERIALIZABLE adds predicate locking (SIREAD) with serialization_failure (SQLSTATE 40001) requiring application retry. — ~45m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q2 · security · clickjacking · pre 2 → post 3 · ceiling b2 · transitional b3</samp></summary>
+<summary><samp>q2 · security · open-redirect · pre 2 → post 2 · ceiling — · transitional b1</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A consumer banking web app exposes a 'Transfer Funds' page at /transfer that uses session cookies for authentication and a synchronizer CSRF token on the form. A security reviewer reports that an attacker can host a page on evil.example that loads /transfer in an invisible iframe, overlays decoy UI on top, and tricks a logged-in victim into clicking 'Confirm Transfer' through the overlay. Explain why the existing CSRF token does not defend against this attack, name the vulnerability class, and identify the specific HTTP response header (and its directive) that is the primary structural mitigation. Compare this header against the older X-Frame-Options header — what does the newer mechanism give you that the older one does not?
+**Scenario:** A SaaS login page accepts a `?next=` query parameter and, after successful login, issues an HTTP 302 redirect to the value of `next`. The developer added validation: the value must start with `/`. A security report shows attackers are using URLs like `https://app.example.com/login?next=//evil.example/phish` to redirect users to attacker-controlled sites post-login, where a clone of the app harvests credentials on a follow-up 're-login' prompt. Explain why the `startsWith('/')` validation fails, what class of vulnerability this is, and the correct mechanism to fix it. Identify the tradeoff between a strict allowlist of redirect targets versus a same-origin parse-and-check approach.
 
  
 
-**Refinement:** You said 'the request does come from the "resource" that is legitimate aka the transfer page'. Clarify: what property of the CSRF token mechanism makes it blind to whether the legitimate page is rendered inside an attacker-controlled frame versus loaded directly by the user?
+**Refinement:** You said 'the '/' only addresses the start, does not allow the cross request to be sane or valid'. Clarify: what specific property of the string `//evil.example/phish` allows a browser to treat it as a cross-origin destination despite beginning with `/`?
 
  
 
-**Assessment:** The answer reached the correct intuition that CSRF tokens are structurally blind to the rendering context, and the refinement articulated that intuition cleanly (the token has no reconciliation with the root render or call-stack provenance — only that the user holds the session). What is missing is the standard vocabulary: the vulnerability class (clickjacking / UI redress), the specific header and directive that the question explicitly asked for, and the comparison against the older header. The answer also conflates CSP with CORS and SameSite, which are distinct mitigations for distinct threat classes — a B3 reviewer needs the primitives named precisely. The reading should land on the OWASP clickjacking taxonomy and the W3C CSP Level 2 definition of frame-ancestors.
+**Assessment:** The answer recognized the validation was unsafe and reached for a defense-in-depth posture, but did not name the vulnerability class (Open Redirect, CWE-601) and could not articulate why `//evil.example/phish` is parsed as an authority component despite beginning with `/`. The refinement was a direct probe for the parsing primitive and the answer fell back on DNS and unspecified browser behavior. The gap is in URL grammar — specifically the distinction between path-relative and authority-relative references — and in the corresponding mitigation pattern that parses the candidate URL against the app's origin rather than inspecting its prefix.
 
 **Literature**
 
-- [remediation] OWASP Clickjacking Defense Cheat Sheet — §Defending with Content Security Policy frame-ancestors directive AND §Defending with X-Frame-Options Response Headers — read these two sections to get the named vulnerability class, the exact header/directive, and the XFO-vs-frame-ancestors comparison the question asked for — ~20m
-- [remediation] Content Security Policy Level 3 (W3C Working Draft) — frame-ancestors directive — §6.1 frame-ancestors — the directive grammar (source-list with 'none', 'self', host-source, scheme-source), the rule that frame-ancestors takes precedence over X-Frame-Options when both are present, and why it is the standardized replacement — ~15m
+- [remediation] OWASP Cheat Sheet Series — Unvalidated Redirects and Forwards Cheat Sheet — Full cheat sheet (Background, Safe URL Redirects, Dangerous URL Redirects, Preventing Unvalidated Redirects and Forwards) — ~20m
+- [remediation] RFC 3986: Uniform Resource Identifier (URI): Generic Syntax — §4.2 Relative Reference (network-path, absolute-path, relative-path references) and §5.3 Component Recomposition — ~25m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q3 · ml-engineering · train-test-contamination · pre 3 → post 3 · ceiling b1 · transitional b2–b3</samp></summary>
+<summary><samp>q3 · ml-engineering · regularization-path · pre 1 → post 2 · ceiling — · transitional b1</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A medical imaging team is training a binary classifier to detect a condition from chest X-rays. Their dataset contains 50,000 images from 8,000 patients (some patients have multiple images taken weeks apart). They use a standard random 80/20 train/test split at the image level and report 0.94 AUC on the held-out test set. When the model is deployed to a new hospital, AUC drops to 0.71. Explain the specific data-handling mechanism that inflated the offline metric, why the random image-level split was the wrong primitive for this dataset, and what splitting strategy you would commit to instead. Name one scikit-learn primitive that implements the correct strategy, and explain what residual generalization gap remains even after fixing the split.
+**Scenario:** A team trains a logistic regression on 200 features to predict churn. They try L1 regularization (alpha=0.1) and get a sparse model selecting 12 features with AUC 0.81. They retrain on a refreshed dataset that's 90% the same rows, expecting roughly the same selected features — but only 4 of the 12 features overlap, even though AUC is again 0.81. The product team is alarmed: 'the model is unstable.' Explain the mechanism that causes L1 to swap among correlated features between runs, why the AUC stays stable even as the selected feature set shifts, and what the correct tool is if the goal is reliable feature selection rather than predictive performance. Identify the tradeoff of switching to L2 or elastic net.
 
  
 
-**Refinement:** You said 'the sampling of 80-20 could have been reinforcing same patient/multiple image thus bias in the model'. Clarify: what specific statistical relationship between a patient's training images and that same patient's test images causes the AUC to be inflated, rather than merely unrepresentative?
+**Refinement:** You said 'those 4 categories have some kind of'. Clarify: what property of the L1 penalty's geometry causes it to select different members from a group of correlated features even when no data leakage is present?
 
  
 
-**Assessment:** The response correctly identified patient-level as the right grouping unit but, when probed for the specific statistical mechanism that inflates AUC, defaulted to a representation/oversampling explanation rather than the dependence-and-leakage explanation the question targeted. The refinement was an opportunity to recover by naming patient-identity confounding (shared anatomy, positioning, scanner artifacts) as the channel through which train-set information bleeds into the test set; instead the answer doubled down on the oversampling framing and invented private terminology ('layer 1/layer 2') in place of canonical vocabulary. The sklearn primitive (GroupKFold/GroupShuffleSplit) was not retrieved, and the residual generalization gap was described abstractly rather than as concrete cross-site/cross-scanner domain shift.
+**Assessment:** The answer misclassified an L1-regularization-instability scenario as a data-leakage / metric-selection problem, despite the scenario explicitly stating the data is 90% overlapping and AUC is stable across runs — both of which are diagnostic against leakage and for the canonical L1 correlated-feature instability. Under refinement the answerer pivoted toward the regularization hyperparameter but, by their own admission, lacked the formal grounding to name the geometric property of the L1 penalty (axis-aligned constraint region producing near-degenerate optima among correlated features) and did not surface stability selection, elastic net's grouping effect, or the L2-loses-sparsity tradeoff. The gap is foundational: the mechanism by which L1 produces sparsity, and why that same mechanism is unstable under feature correlation.
 
 **Literature**
 
-- [remediation] Data Leakage in Machine Learning: A Survey — §4 'Train-test contamination' and §4.2 'Group leakage' — specifically the medical-imaging worked example where multiple scans per patient appear on both sides of the split, and the formal statement that the unit of statistical independence is the entity (patient), not the record (image). — ~45m
-- [remediation] scikit-learn User Guide §3.1 Cross-validation: GroupKFold and StratifiedGroupKFold — The 'Cross-validation iterators for grouped data' subsection — definition of GroupKFold, GroupShuffleSplit, and StratifiedGroupKFold; the `groups` parameter contract; and the worked example where each sample's group label (e.g., patient_id) forces all of that group's samples into the same fold. — ~20m
+- [remediation] An Introduction to Statistical Learning — Ch. 6 §6.2 Shrinkage Methods — read 6.2.1 Ridge Regression and 6.2.2 The Lasso end-to-end, paying particular attention to Figure 6.7 (the diamond vs circle constraint regions) and the discussion of why L1 produces sparse solutions while L2 does not — ~1h 30m
+- [remediation] Regularization Paths for Generalized Linear Models via Coordinate Descent / Elastic Net for sparse high-dimensional models — Zou & Hastie 2005 §2 'Naive Elastic Net' and §3 'Grouping Effect' (pp. 304–308) — establishes why elastic net handles correlated feature groups; then Meinshausen & Bühlmann 2010 'Stability Selection' §1–2 for the resampling-based stable-selection procedure — ~2h
 
 </small>
 </details>
 
 <details>
-<summary><samp>q4 · data-engineering · exactly-once-sink · pre 2 → post 3 · ceiling — · transitional b1–b3</samp></summary>
+<summary><samp>q4 · systems-distributed · read-repair · pre 2 → post 2 · ceiling — · transitional b1</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A data engineering team operates a Kafka → Spark Structured Streaming → Postgres pipeline that aggregates event counts per user per hour and upserts them into an `hourly_user_events` table. They observe that after consumer restarts (e.g., during deploys or node failures), some hourly counts in Postgres are higher than ground truth — duplicates have leaked through despite the streaming job using checkpointing. The team's current code pattern is: read batch → write to Postgres via JDBC → commit Kafka offsets. Explain the specific failure-window mechanism that produces these duplicates, why checkpointing alone does not give exactly-once semantics across a heterogeneous sink, and what concrete change to the write logic would make the pipeline effectively-once at the Postgres sink. What property must the sink write possess for your fix to work?
+**Scenario:** A Dynamo-style key-value store uses quorum reads/writes (N=3, R=2, W=2) over three replicas. The team observes that some keys remain divergent across replicas for hours after a transient network blip — specifically, keys that are written once and rarely read. They have read-repair on the read path. Explain why read-repair alone is insufficient for this access pattern, name the mechanism that is the correct complement, and describe how it works at a high level (what data structure, what is exchanged between replicas, why it's bandwidth-efficient). Identify the tradeoff in tuning its frequency.
 
  
 
-**Refinement:** You said 'make the commit not at kafka level, but at postgres outbox level'. Clarify: what property of the Postgres write operation itself prevents a duplicate upsert from landing when the job replays the same batch after a crash between the write and the offset commit?
+**Refinement:** You said 'it somehow generates the mapping per write time (flips the bit? reconciles at snapshot sync during quorum, divergences or blips surface it in a simple xor bit check or the likes)'. Clarify: what property of the data structure allows two replicas to identify *which specific key ranges* are divergent without exchanging the full keyspace, and how does the structure's shape enable that localization?
 
  
 
-**Assessment:** The answer locates the failure window at the Postgres-write / Kafka-offset-commit boundary and the refinement surfaces ON CONFLICT as the relevant Postgres primitive, but the reasoning around why that primitive closes the replay gap is missing: the response frames the fix as a control-flow inversion ('commit pre-approved at PG level, kafka simply confirms') rather than as an idempotency property on a deterministic key with replace-not-add merge semantics. The standard merge-upsert vocabulary and the explanation of why heterogeneous sinks cannot be covered by checkpoint atomicity alone are the gaps. The refinement narrowed the gap from 'outbox label' to 'ON CONFLICT keyword' but did not close it to a stated mechanism-under-pressure argument.
+**Assessment:** The answerer correctly diagnosed why read-repair is insufficient — the access pattern means rarely-read keys never trigger healing — which is the B1-level identification. Beyond that, the answer never reaches the canonical complement (Merkle-tree anti-entropy) and its defining property (hierarchical hash comparison enabling O(log N) range localization). The refinement probe pointed directly at the structural property that enables range-localization without full keyspace exchange; the response instead committed to DHT hash-table routing, conflating a key-placement structure with a replica-reconciliation structure. The gap is in recognizing the canonical Dynamo-family primitive for background convergence and its structural shape, not in articulation.
 
 **Literature**
 
-- [remediation] Designing Data-Intensive Applications — Ch. 11 §End-to-end argument for databases (pp. 516–520) and §Idempotence (pp. 478–479) — ~1h 30m
-- [remediation] Spark Structured Streaming Programming Guide — Output Sinks and Fault Tolerance Semantics — §Fault Tolerance Semantics and §Using Foreach and ForeachBatch (idempotent JDBC sink pattern) — ~30m
+- [remediation] Dynamo: Amazon's Highly Available Key-value Store — §4.7 'Handling Permanent Failures: Replica Synchronization' — Merkle tree construction, root-hash comparison, and recursive descent into divergent subtrees — ~25m
+- [remediation] Designing Data-Intensive Applications — Ch. 5 §Leaderless Replication — 'Read repair and anti-entropy' subsection (pp. 178–179) — ~15m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q5 · ai-llm · llm-as-judge-evaluation · pre 3 → post 3 · ceiling b2 · transitional b3</samp></summary>
+<summary><samp>q5 · frontend · controlled-input-cursor-jump · pre 2 → post 2 · ceiling — · transitional b1</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A team building a customer support chatbot wants to compare two candidate LLM-backed answer generators (Model A and Model B) on 500 historical support tickets. Without budget for human labeling, they set up an LLM-as-judge pipeline: for each ticket, both A's and B's answers are sent to GPT-4 with a prompt asking 'Which answer is better, Answer 1 or Answer 2?' GPT-4 returns the winner, and they aggregate win rates. A skeptical PM points out the results may be untrustworthy. Identify at least two specific, named biases that LLM-as-judge introduces in this setup, explain the mechanism by which each distorts the win rate, and describe concrete mitigations for each. What is the principled fallback — what kind of evaluation does an LLM-as-judge pipeline approximate, and where does the approximation break down?
+**Scenario:** A React form has a controlled text input bound to component state. The onChange handler uppercases the value before calling setState. Users report that when they type a character in the middle of an existing word, the cursor jumps to the end of the input on every keystroke. Explain the mechanism causing the cursor jump (what does React do with the input's value attribute on each render, and how does that interact with the browser's selection state), and describe the correct fix. Identify the tradeoff between using an uncontrolled input with a ref versus preserving the cursor position manually in the controlled-input approach.
 
  
 
-**Refinement:** You said 'pinning the LLM that is judgeing to only focus on the second position allows increased accuracy and reduces hallucination for some reason'. Clarify: what mechanism causes the second-position anchor to reduce bias rather than simply shifting the same bias to consistently favor the second answer?
+**Refinement:** You said 'React probably calls a state update on the attribute/the dom render node with the attribute'. Clarify: what specifically does React do to the DOM input's value attribute during reconciliation, and why does that DOM operation cause the browser to reset the cursor position rather than preserve it?
 
  
 
-**Assessment:** The response correctly names position bias and rubric-ambiguity as concerns and, under refinement, arrives at the structurally correct position-swap mitigation by reasoning (run both orderings, apply the bias symmetrically, then aggregate) — this matches the published Zheng et al. fix even though the pre-refinement version misstated it as 'always judge the second position'. The substantive gaps are: (1) only two biases surfaced when the canonical taxonomy includes at least position, verbosity, and self-enhancement; (2) the principled-fallback half of the question — what LLM-as-judge approximates and where the approximation breaks — is answered abstractly ('coherence to invariants') rather than concretely (it approximates a human preference panel, and breaks under correlated judge/candidate errors and when the preference signal diverges from the production outcome metric the PM actually cares about); (3) the PM's underlying decision question — can we trust this win rate to pick a model — is never addressed with the construct-validity caveat the situation requires.
+**Assessment:** The answer identifies the right surface elements — controlled input, reconciliation, selection state, the two candidate fixes — but substitutes a fabricated mechanism (re-render scheduling, microtask fencing, 'cursor bound to render-space') for the documented DOM behavior that actually drives the bug. The refinement probe asked specifically what React does to the input's value during reconciliation and why that resets the cursor; the response doubled down on a spatial subtree-re-render metaphor rather than naming the DOM property assignment whose specified side effect collapses the selection. The tradeoff discussion gestures at the right axis (rigidity vs. flakiness) without naming what each approach actually owns. The gap is at the level of a single specific DOM API and its specified interaction with selection state.
 
 **Literature**
 
-- [remediation] Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena — §3 'LLM-as-a-Judge' and §4 'Limitations and Biases' — position bias, verbosity bias, self-enhancement bias, and the position-swap consistency aggregation — ~1h 15m
-- [remediation] Evaluating Large Language Models: A Comprehensive Survey — §4 'Where to Evaluate' and §5 'How to Evaluate' — pairwise vs reference-based evaluation, construct validity, and when LLM-judge win rates diverge from human preference and from downstream task metrics — ~45m
+- [remediation] HTMLInputElement: setSelectionRange() method & value property — MDN — HTMLInputElement.value §'Setting the value' note on selection reset, and HTMLInputElement.setSelectionRange() reference. Read both pages end-to-end (roughly one focused chapter's worth). — ~30m
+- [remediation] How (and why) React updates DOM input values during reconciliation — 'React as a UI Runtime' — Reconciliation section, focused chapter read. Covers how React diffs props and applies them to host DOM nodes, including value, which directly addresses what the refinement probe asked. — ~45m
 
 </small>
 </details>
