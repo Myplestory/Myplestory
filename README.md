@@ -33,7 +33,7 @@ currently working on low latency infra, compliance systems, evaluation harnesses
  
 
 <details>
-<summary><samp>fortifai · self-audit loop · streak 2d</samp></summary>
+<summary><samp>fortifai · self-audit loop · streak 3d</samp></summary>
 
 <sub><samp><i>self-audit: scenario-based time-pressured recall, cross-domain breadth, b3-calibrated<br>
 invariant: zero outside assistance. no docs, no ai, no peers. 10m/response, 5m/single refinement<br>
@@ -41,145 +41,144 @@ breadth: systems/distributed, backend, sre, ml, ai/llm, frontend, data, security
 bar: consistent ≥3 across all 8 swe fields</i></samp></sub>
 
 ```
-industry     swe                                  updated         2026-05-28
-scope        cross-domain · grab-bag              duration        53m 54s
+industry     swe                                  updated         2026-05-29
+scope        cross-domain · grab-bag              duration        50m 34s
 calibration  b3 "practitioner"                    rotation bias   underindexed-weighted
 
                                               b₂  b3  b₄
-q1  data-engineering   medallion-architecture  ₄   3   ₃
-q2  sre                runbook-automation      ₅   4   ₃
-q3  systems-distributedread-after-write        ₂   2   ₂
-q4  ml-engineering     batch-normalization     ₂   2   ₁
-q5  frontend           css-stacking-context    ₂   2   ₁
+q1  security           jwt-algorithm           ₃   3   ₂
+q2  sre                noisy-neighbor          ₂   2   ₂
+q3  backend            api-rate-limiting       ₃   3   ₂
+q4  systems-distributedtwo-phase-commit        ₃   3   ₂
+q5  data-engineering   streaming-join-state    ₂   2   ₂
 
-strengths    incident-postmortem-loop · runbook-automation · toil-reduction
-gaps         batch-normalization-train-eval-divergence · batchnorm-inference-mode · css-stacking-context · dynamo-style-r-w-n
+gaps         cgroup-resource-limits · cpu-throttling-vs-oom · noisy-neighbor-isolation · state-store-unbounded-growth
 
 score (dreyfus)    1 (novice) → 3 (competent) → 5 (mastered)
 band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 ```
 
 <details>
-<summary><samp>q1 · data-engineering · medallion-architecture · pre 3 → post 3 · ceiling b2 · transitional b3–b4</samp></summary>
+<summary><samp>q1 · security · jwt-algorithm-confusion · pre 2 → post 3 · ceiling — · transitional b1–b3</samp></summary>
 
 <small>
 
  
 
-**Scenario:** Company X is building a lakehouse on Delta Lake to land clickstream events from a mobile app. The platform team proposes a three-zone layout: bronze (raw events, schema-on-read), silver (cleaned, deduplicated, conformed types), and gold (business-aggregated marts). A new engineer asks: 'Why not just write directly into the silver layer? Bronze looks like duplicated storage cost for no benefit.' Explain the mechanism each zone provides — what bronze gives you that silver alone cannot, what silver gives you that gold alone cannot — and identify the tradeoff each layer makes (what it costs to maintain it). Be concrete about at least one failure scenario where collapsing bronze into silver would be unrecoverable.
+**Scenario:** A SaaS platform issues JWTs signed with RS256. The auth library on the resource server is configured to accept a list of allowed algorithms and uses the IdP's public key (fetched from a JWKS endpoint) for verification. A code review reveals that the allowed-algorithms list is `['RS256', 'HS256']`. Explain the specific attack this configuration enables, the mechanism by which the verifier is tricked into accepting an attacker-forged token, and the correct fix. Why is it insufficient to simply 'rotate the signing key' if this misconfiguration is discovered in production?
 
  
 
-**Refinement:** You said 'lulls in data collection/ingestion cannot be surfaced because they are identical under the idempotent/deduplicated model'. Clarify: what specific property of the bronze layer's storage format or write semantics makes that distinction recoverable there but not in silver?
+**Refinement:** You said 'the public key can somehow be cross referenced with the HS256 algorithm, and therefore tricked into accepting an attacker token'. Clarify: what specific bytes does the attacker use as the HS256 secret, and why does possessing those bytes let them produce a signature the verifier accepts?
 
  
 
-**Assessment:** The answer correctly identifies medallion layering as a derivability/fidelity contract and, after refinement, names the right mechanism — bronze's lossless raw persistence vs silver's lossy conformance — which satisfies the B3 invariant. The gap is in the worked failure example: the question asked for a concrete unrecoverable scenario, and the chosen example (data-collection lulls) is one that silver could actually surface from its timestamps. The canonical bronze-only recovery cases — reprocessing after a silver dedup/cleaning bug, schema evolution that needs historical raw fields, and audit/regulatory replay — are not surfaced, and the contract framing (what each layer promises to its downstream consumer) is implicit rather than explicit.
+**Assessment:** Post-refinement, the answer reaches the load-bearing fact — the attacker uses the RSA public key bytes as the HS256 secret — but the supporting explanation describes a broken model of asymmetric cryptography ('combined keys to decode', 'his own HS256 private key') and never names the canonical mechanism: the verifier selects its verification routine from the attacker-controlled `alg` header. The fix proposal correctly tightens the allowlist but bundles in unrelated session-hardening (short TTLs, session cookies on every endpoint) that conflates this JWT-specific vulnerability with general web-session hygiene. The rotation-is-insufficient argument is directionally right but unjustified: the answer says 'rotation won't save the attacker from spoofing' rather than explaining that the rotated public key is itself published on JWKS and immediately reusable as the HMAC secret.
 
 **Literature**
 
-- [remediation] Delta Lake: The Definitive Guide — Ch. 9 'Architecting Your Lakehouse' — §Medallion Architecture: bronze replayability, silver conformance contract, and the canonical 'reprocess after silver-logic bug' failure mode. — ~45m
-- [remediation] Designing Data-Intensive Applications — Ch. 11 'Stream Processing' §The Unbundled Database / Event Sourcing, pp. 457–465 — raw event log as the source-of-truth substrate from which all derived views can be rebuilt. — ~30m
+- [remediation] Critical vulnerabilities in JSON Web Token libraries — Full post — 'Meet the alg header' through 'The Fix' (the canonical disclosure of RS256→HS256 algorithm confusion, including the exact attack: signing a forged token with the public key as HMAC secret) — ~20m
+- [remediation] OWASP JSON Web Token for Java Cheat Sheet — §'None Hashing Algorithm' and §'Token Sidejacking' — the algorithm-selection family of attacks and the prescribed fix (pin the verifier to one algorithm, bind key to algorithm) — ~15m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q2 · sre · runbook-automation · pre 4 → post 4 · ceiling b3 · transitional b4</samp></summary>
+<summary><samp>q2 · sre · noisy-neighbor-isolation · pre 2 → post 2 · ceiling — · transitional b1</samp></summary>
 
 <small>
 
  
 
-**Scenario:** Service A at Company X pages its on-call rotation roughly 12 times per week for the same class of incident: a downstream partner API returns intermittent 5xxs, the on-call engineer SSHes into a worker pod, restarts the consumer, and clears a backed-up queue. The runbook for this is six steps long and has been followed correctly every time. Leadership asks the on-call team to 'reduce alert volume'. The team proposes silencing the alert during low-traffic hours. Explain why this is the wrong remediation in SRE terms, what category of work this incident pattern represents, and what the mechanism-level fix looks like. Identify what tradeoff the right fix imposes that silencing does not.
+**Scenario:** A team runs ~40 microservices on a shared Kubernetes cluster. One service (a batch report generator) periodically consumes large amounts of CPU, and during those windows unrelated latency-sensitive services on the same nodes see p99 latency rise 3–5×. The team sets a CPU limit of 2 cores on the report generator. After the change, the report generator itself frequently fails its readiness probe and gets killed by the kubelet, while the latency-sensitive services still occasionally see degradation. Explain (a) the mechanism by which CPU limits cause the report generator's probe failures (vs how memory limits would behave), (b) why setting a CPU *limit* did not fully fix the noisy-neighbor problem, and (c) what combination of CPU requests, limits, and scheduling controls actually achieves the desired isolation.
 
  
 
-**Refinement:** You said 'automate or mitigate the backed up queue via multi layer defenses'. Clarify: what property of the current six-step human runbook, when encoded into automation, determines whether the automated fix eliminates the underlying failure class or simply reproduces the same manual loop faster?
+**Refinement:** You said 'the cpu limit is a consumer fix'. Clarify: what is the specific kernel scheduling mechanism that causes the report generator's readiness probe to time out under a CPU limit, as opposed to the process being terminated by an OOM killer under a memory limit?
 
  
 
-**Assessment:** The response correctly rejects silencing on mechanism grounds — it identifies that muting hides real backpressure and degrades 'what changed' debugging — and reaches for the right family of fixes (bounded retries, automated drain, multi-layer queue defenses). The refinement sharpens this with the critical distinction between automation that replays the runbook faster vs. automation that prevents step 1 from being needed. The gap is at the vocabulary and framing layer: the work category the question explicitly asks to name is never named in canonical terms, and the right-fix tradeoff is not connected to the partner-team signal or on-call/error-budget consequence that distinguishes a B4 design commitment from a B3 mechanism explanation.
+**Assessment:** The answer correctly framed the problem as noisy-neighbor contention and intuited that the CPU limit was the wrong primary lever, but the mechanism-level claims are inverted: part (a) attributes the probe failure to memory pressure and OOM under CPU cap, when the actual mechanism is the Linux CFS bandwidth controller throttling the cgroup at quota exhaustion within a 100ms period, descheduling the probe handler. The refinement directly asked for that kernel scheduling mechanism and the response substituted generic syscall/scheduler vocabulary (task scheduler queueing, mutex vs futex, pipe costs) rather than CFS quota/period throttling. Part (c) reached for application-protocol stability patterns (backoff, jitter, DLQ, circuit breaker, bulkhead) which do not apply to a single CPU-bound batch process being throttled by the kernel; the canonical answer involves CPU requests vs limits semantics, QoS classes, and node-level scheduling isolation (taints, affinity, dedicated pools). The gap is in the cgroup / CFS / Kubernetes-scheduler primitives layer.
 
 **Literature**
 
-- [remediation] Site Reliability Engineering: How Google Runs Production Systems — Ch. 5 'Eliminating Toil' — the full chapter (toil definition, the toil-to-engineering ratio, and the case that automating a runbook step-for-step without removing the failure class is faster toil, not engineering) — ~45m
-- [growth] Release It! Design and Deploy Production-Ready Software, 2e — Connects the answer's instinct toward 'multi-layer defenses' to the named stability-pattern catalog (Circuit Breaker, Bulkhead, Timeout, Steady State) so the next-step fix to a flaky partner API can be committed to by name rather than enumerated as options. — ~6h
+- [remediation] Kubernetes Documentation — Resource Management for Pods and Containers — Full document, with focus on §How Pods with resource limits are run (CFS quota), §Requests and limits, and §Configure default CPU requests and limits for a namespace; plus the linked QoS classes page. — ~45m
+- [remediation] Understanding Linux Container Scheduling (CFS Bandwidth Control and Kubernetes CPU Throttling) — Full article — covers cpu.cfs_quota_us / cfs_period_us mechanics, why throttling causes p99 latency spikes and probe failures, the kernel 5.4 fix, and the operational guidance on when to drop CPU limits entirely. — ~30m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q3 · systems-distributed · read-after-write-quorum · pre 2 → post 2 · ceiling — · transitional b1</samp></summary>
+<summary><samp>q3 · backend · api-rate-limiting-algorithm · pre 2 → post 3 · ceiling b1 · transitional b2–b3</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A distributed key-value store is configured with N=5 replicas per key. Team Y is deciding between (W=3, R=3), (W=4, R=2), and (W=2, R=4) for a workload that is 90% reads, 10% writes, and requires read-your-writes consistency for a single client session in the steady state (no failures). Explain the mechanism that makes R+W>N sufficient for read-your-writes in this model, then commit to one of the three configurations for this workload and justify the choice. For the two you dismiss, name the specific axis on which they lose (latency, availability under one replica down, write throughput, etc.). Finally, identify one failure scenario where R+W>N still produces a stale read despite the inequality holding.
+**Scenario:** A backend team is adding per-API-key rate limiting (e.g., 100 requests/minute per key) to a public REST API served by ~20 stateless application instances behind a load balancer. An engineer proposes a Redis-backed fixed-window counter: `INCR key:{api_key}:{minute}` with a 60-second TTL, reject if > 100. Explain (a) the specific 'burst at the window boundary' failure mode of this design and quantify the worst-case burst a client can achieve, (b) how a token bucket (or sliding-window log/counter) algorithm differs mechanically and why it eliminates that burst, and (c) the tradeoff that token bucket pays vs the fixed-window counter — what is more expensive about it in Redis terms?
 
  
 
-**Refinement:** You said 'The mechanism that makes R+W>N sufficient is the fact the read-your-writes is named as a consistent invariant'. Clarify: what specific property of the intersection between the write quorum set and the read quorum set guarantees that at least one node in any read quorum has seen the most recent write?
+**Refinement:** You said 'The worst case burst a client can achieve under this design is 100 + 99 + .... 1 throughout the 1 minute window (sliding)'. Clarify: what is the exact maximum number of requests a client can fire in a short time span at the boundary between two fixed windows, and what window-boundary timing produces that number?
 
  
 
-**Assessment:** The response identifies the right domain (Dynamo-style quorum, read-your-writes) and commits to a configuration, but substitutes a sticky-session routing model for the actual quorum-intersection mechanism — the property that any write set of size W and read set of size R on N replicas must share at least one replica when W+R>N. The refinement probe pointed directly at 'the intersection between the write quorum set and the read quorum set,' and the response answered with superset/subset and session-routing language rather than the intersection property. The dismissals of the other two configurations rest on a fabricated connection-hold argument rather than the real tradeoff axes (read latency on the 90% path, write availability under one replica down). The stale-read failure example ('routing to a non-propagated node') is directionally aware but does not name a specific mechanism such as sloppy quorum / hinted handoff or in-flight unacknowledged writes.
+**Assessment:** The answer recognizes the algorithm family (fixed window, token bucket, sliding window log/counter) but does not articulate the mechanism that produces the boundary burst. The initial response offered the wrong quantification (a triangular-sum series rather than the straddling-boundary 200) and inverted the Redis cost tradeoff, claiming fixed-window is more expensive than token bucket. The refinement recovered the correct burst quantification (200) and corrected the cost ordering, but attributed the burst cause to instance statelessness rather than to the atomic window reset at the boundary — a mechanical confusion about where the failure originates. The Redis cost analysis remains qualitative; nothing concrete about token-bucket Lua atomicity or sorted-set memory growth.
 
 **Literature**
 
-- [remediation] Designing Data-Intensive Applications — Ch. 5 §Quorums for reading and writing, pp. 179–182 — the pigeonhole intersection argument and the diagram showing W+R>N as set overlap, plus §Limitations of Quorum Consistency, pp. 181–184 (sloppy quorum, concurrent writes, in-flight writes) — ~1h 30m
-- [remediation] Dynamo: Amazon's Highly Available Key-value Store — §4.5 'Data Versioning' and §4.6 'Execution of get () and put () operations' — how the coordinator assembles W and R sets from the preference list and how version metadata (vector clocks) lets the client reconcile, and §4.6 sloppy-quorum mechanics that produce stale reads even when R+W>N — ~1h
+- [remediation] System Design Interview – An Insider's Guide, Volume 1 — Chapter 4: Design a Rate Limiter — covers fixed window, sliding window log, sliding window counter, token bucket, and leaky bucket with mechanism diagrams and Redis implementation sketches. — ~1h 30m
+- [remediation] How we built rate limiting capable of scaling to millions of domains — Full post — covers the boundary-burst problem of fixed windows, the GCRA/token-bucket family, and the Redis state cost of each approach with concrete Lua sketches. — ~25m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q4 · ml-engineering · batch-normalization-train-eval-divergence · pre 2 → post 2 · ceiling — · transitional b1</samp></summary>
+<summary><samp>q4 · systems-distributed · two-phase-commit-blocking · pre 2 → post 3 · ceiling — · transitional b1–b3</samp></summary>
 
 <small>
 
  
 
-**Scenario:** An engineer at Company X trains an image classifier with BatchNorm layers. Training accuracy is 94% and validation accuracy (computed during training with the model in train mode) is 91%. After saving the model and loading it into a production inference service that processes requests one image at a time, accuracy drops to 62%. The model weights are identical to what was validated. Explain the mechanism that produces this gap. What does BatchNorm compute differently in train mode vs eval mode, and why does the difference manifest specifically at batch size 1 in production? Name the fix and identify one tradeoff the fix imposes (i.e., what you give up by switching modes correctly).
+**Scenario:** A payments platform needs to debit a wallet (Service A, Postgres) and credit a merchant ledger (Service B, separate Postgres in a different bounded context) as part of a single business transaction. An architect proposes two-phase commit (2PC) across both databases via XA. A second architect proposes a saga: debit wallet → publish event → credit ledger, with a compensating 'refund wallet' action on credit failure. Explain (a) the specific failure mode of 2PC that makes it operationally fragile in this microservices setup (be precise about which phase and which participant state causes the problem), (b) why the saga gives up serializability and what business-visible anomaly the user can observe between the two steps, and (c) what mechanism the saga consumer must implement so that retries of the credit step do not double-credit the merchant.
 
  
 
-**Refinement:** You said 'BatchNorm computes the normalize aggregate between the batch'. Clarify: what specific numerical values does BatchNorm use to normalize inputs at inference time when no batch statistics are available, and where do those values come from?
+**Refinement:** You said 'At most once semantics, at both user debitting time and merchant attempt'. Clarify: what property of an idempotency key prevents a retry of the credit step from being treated as a new, distinct transaction by the merchant ledger service?
 
  
 
-**Assessment:** The response correctly localized the failure to BatchNorm and to the batch-size mismatch between training/validation and one-at-a-time production inference, but missed the actual mechanism: the model was never switched to evaluation mode, so BN continued to normalize against batch statistics where 'the batch' is a single sample. The refinement probed exactly the missing primitive — what stored values BN uses at inference — and the answerer surfaced guesses ('median/mean?', 'deviation or variance?', 'default is 0') rather than recall, confirming the gap is in the running-statistics / EMA primitive and the eval-mode toggle, not in deployment batching strategy. The proposed fix (batch the production traffic) addresses a symptom under the wrong model and would not resolve the gap; the canonical one-line fix (model.eval()) and its tradeoff (frozen statistics that cannot adapt to covariate shift) are absent.
+**Assessment:** The answer recognizes the saga vs 2PC framing and, after refinement, correctly identifies that an idempotency key prevents double-credit via key collision at write time — satisfying the B3 mechanism floor for part (c). The unresolved gap is part (a): the precise reason 2PC is fragile in microservices is never named — specifically, the coordinator-failure-after-PREPARE scenario where participants are stuck in the 'in-doubt' / prepared state holding locks and cannot unilaterally commit or abort. The answer describes generic atomicity-failure-during-commit, which is the problem 2PC is designed to solve, not the failure mode of 2PC itself. Secondary gap: 'at-most-once' semantics is named for the credit step where the correct semantic is effectively-once (at-least-once delivery + idempotent dedup); this terminological misuse signals that the dedup mechanism is recognized but its delivery-semantics framing is not.
 
 **Literature**
 
-- [remediation] Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift — §3 'Normalization via Mini-Batch Statistics' and §3.1 'Training and Inference with Batch-Normalized Networks' — specifically the inference-time use of population (running) statistics rather than mini-batch statistics — ~45m
-- [remediation] PyTorch Documentation — BatchNorm2d and Module.eval() — BatchNorm2d 'track_running_stats' and 'momentum' parameter descriptions, plus the Module.eval() page explaining the train/eval mode switch and which layers it affects (BatchNorm, Dropout) — ~20m
+- [remediation] Designing Data-Intensive Applications — Ch. 9 §Atomic Commit and Two-Phase Commit, pp. 352–359 — focus on 'Coordinator failure' subsection and the 'in-doubt' participant state — ~1h 30m
+- [remediation] Microservices Patterns — Ch. 4 'Managing transactions with sagas' §4.3 Countermeasures, plus §4.4 The order service saga — covers isolation anomalies (lost updates, dirty reads) and the role of idempotency keys at the consumer — ~45m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q5 · frontend · css-stacking-context · pre 2 → post 2 · ceiling —</samp></summary>
+<summary><samp>q5 · data-engineering · streaming-join-state-management · pre 2 → post 2 · ceiling b1</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A frontend engineer on Team Y reports that their modal dialog (z-index: 9999) is being rendered behind a sidebar (z-index: 10) on one page but not on others. Inspecting the DOM, they discover that the sidebar's parent has `transform: translateZ(0)` applied for GPU compositing. Explain the mechanism: why does a transform on an ancestor cause a high z-index descendant to lose to a low z-index sibling tree? Name the CSS concept involved and identify at least two other properties that trigger the same effect. Commit to a remediation strategy and explain what tradeoff it imposes vs. the 'just raise z-index higher' approach a junior engineer might reach for.
+**Scenario:** A streaming pipeline (Kafka Streams or Flink) joins two event streams: `clicks` and `impressions`, keyed by `(user_id, ad_id)`, to compute click-through-rate features. The naive implementation does an inner join with no time bound. After two weeks in production, state-store size has grown to hundreds of GB and checkpoint times are dominating processing latency. Explain (a) the mechanism by which an unbounded stream-stream join causes state to grow without bound (be specific about what is being retained and why), (b) how a windowed/interval join bounds the state and what the window parameter physically controls in the state store, and (c) the correctness tradeoff introduced by the window — what kinds of legitimate joins will the windowed version miss, and how would you reason about choosing the window size from business semantics?
 
  
 
-**Refinement:** You said 'the dom fundamentally changes (the render tree is altered/the transform shifts the nodes, and overrides the z index values)'. Clarify: what is the specific boundary that a transform creates, and why does that boundary prevent z-index comparisons from crossing it regardless of how high the z-index value is?
+**Refinement:** You said 'the join occurs over all the data seen/recomputes joins already seen'. Clarify: what specific data structure the state store retains for each stream side, and why entries cannot be evicted until a match attempt is made.
 
  
 
-**Assessment:** The answer identifies that the transform is causally responsible for the modal's z-index losing to a lower-z-index sibling tree but cannot name the CSS concept that gates the comparison or state the rule that governs z-index across that boundary. The refinement probe directly invited naming the boundary; the response offered three guesses ('a styling? subtree? root render state?') without converging. The 'other two properties' answer named one transform sub-case and one unrelated ARIA attribute, indicating the peer-property family was not recalled. The remediation reached for a React lifecycle metaphor ('re-render', 'use effect') for what is purely a CSS painting-model issue, suggesting the gap is conceptual rather than articulation. The reading should establish what the boundary is named, the rule that operates across it, and what design pattern bypasses it without raising z-index.
+**Assessment:** The answer identifies that windowing bounds state and that there is a correctness tradeoff, satisfying surface-level domain identification. However, the core mechanism — why state cannot be evicted (asymmetric future arrival on the opposite stream side could still produce a legitimate match, gated by event-time watermark advancement) — is not articulated. The refinement probe targeted precisely this gap, and the answer conflated eviction-blocking with in-memory residency, which is a primitive-level misunderstanding rather than an articulation gap. Vocabulary for keyed state stores, watermarks, and event-time retention horizons is absent throughout. The business-semantics reasoning for window sizing is gestured at but not connected to a named downstream consumer (attribution policy, CTR model freshness).
 
 **Literature**
 
-- [remediation] MDN — Stacking context — Full article: 'Stacking context' — definition, the list of stacking-context-creating properties (transform, opacity, filter, will-change, isolation, position: fixed/sticky, contain, mix-blend-mode), and the z-index-within-context rule — ~25m
-- [remediation] CSS Transforms Module Level 1 — The Transform Rendering Model — Full section §6 'The Transform Rendering Model' — verbatim: 'For elements whose layout is governed by the CSS box model, any value other than none for the transform property results in the creation of a stacking context.' — ~15m
+- [remediation] Streaming Systems — Ch. 3 'Watermarks' and Ch. 4 'Advanced Windowing' — focused chapters on event-time, watermark-driven retention, and how windows physically bound state in keyed state stores — ~2h 30m
+- [remediation] Kafka Streams Developer Guide — Stream-Stream Joins — §Stream-Stream Joins and §State Stores — JoinWindows.of(Duration), windowed state store retention semantics, RocksDB-backed keyed buffers per side — ~45m
 
 </small>
 </details>
