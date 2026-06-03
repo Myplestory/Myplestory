@@ -33,7 +33,7 @@ currently working on low latency infra, compliance systems, evaluation harnesses
  
 
 <details>
-<summary><samp>fortifai · self-audit loop</samp></summary>
+<summary><samp>fortifai · self-audit loop · streak 1d</samp></summary>
 
 <sub><samp><i>self-audit: scenario-based time-pressured recall, cross-domain breadth, b3-calibrated<br>
 invariant: zero outside assistance. no docs, no ai, no peers. 10m/response, 5m/single refinement<br>
@@ -41,145 +41,144 @@ breadth: systems/distributed, backend, sre, ml, ai/llm, frontend, data, security
 bar: consistent ≥3 across all 8 swe fields</i></samp></sub>
 
 ```
-industry     swe                                  updated         2026-06-01
-scope        cross-domain · grab-bag              duration        59m 40s
+industry     swe                                  updated         2026-06-03
+scope        cross-domain · grab-bag              duration        1h 2m
 calibration  b3 "practitioner"                    rotation bias   underindexed-weighted
 
                                               b₂  b3  b₄
-q1  backend            connection-pool-sizing  ₅   4   ₃
-q2  ai-llm             function-schema-design  ₄   3   ₂
-q3  security           csrf-double-submit      ₂   2   ₁
-q4  frontend           react-suspense-data     ₂   2   ₂
-q5  ml-engineering     gradient-accumulation   ₁   1   ₁
+q1  security           security-headers-hsts   ₂   2   ₂
+q2  ai-llm             rag-chunk-overlap       ₃   3   ₂
+q3  frontend           intersection-observer   ₂   2   ₂
+q4  data-engineering   broadcast-join-vs       ₂   2   ₂
+q5  sre                connection-draining     ₃   3   ₂
 
-strengths    blocking-io-saturation · connection-pool-sizing · thread-per-request-model
-gaps         batch-size-learning-rate-coupling · cookie-attribute-tradeoffs · csrf-double-submit-cookie · effective-batch-size
+gaps         broadcast-join-vs-shuffle-join · intersection-observer-vs-scroll-listener · join-strategy-selection · layout-thrash
 
 score (dreyfus)    1 (novice) → 3 (competent) → 5 (mastered)
 band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 ```
 
 <details>
-<summary><samp>q1 · backend · connection-pool-sizing · pre 3 → post 4 · ceiling b3 · transitional b4</samp></summary>
+<summary><samp>q1 · security · security-headers-hsts · pre 2 → post 2 · ceiling — · transitional b1</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A SaaS company runs a Python/Django API behind gunicorn with 4 worker processes × 8 threads per worker on each of 10 application instances. The Postgres primary is sized for 200 max_connections. Each instance is configured with a connection pool of size 20 (psycopg pool). During a marketing campaign, p99 latency spikes from 80ms to 4 seconds, but Postgres CPU stays at 30% and pg_stat_activity shows ~180 active connections, most idle in transaction for short periods. Explain mechanically why p99 latency degraded so sharply even though the database itself is not saturated. Then explain the tradeoff: if you doubled the per-instance pool size to 40, what specifically improves and what specifically gets worse?
+**Scenario:** A consumer SaaS app, ShopVerse, serves its login page over HTTPS but does not send an HSTS header. A security reviewer says this exposes users to an SSL-stripping (downgrade) attack even though every page is served over TLS. Walk through (a) the mechanism of an SSL-stripping attack on a first visit when the user types 'shopverse.com' into the address bar, (b) precisely what adding 'Strict-Transport-Security: max-age=31536000; includeSubDomains' changes about the browser's behavior on subsequent visits, and (c) what residual gap HSTS alone does NOT close on the very first-ever visit, and which mechanism (name it) addresses that gap. Explain why each part works the way it does.
 
  
 
-**Refinement:** You said 'the extreme degradation of latency is 100% the cause of the mismatch between the pool size, and access size'. Clarify: what happens to a thread that requests a connection when the pool is exhausted — specifically, what queuing or blocking behavior produces the p99 spike rather than an immediate error?
+**Refinement:** You said 'the loophole allows the attacker an attack vector before the actual https is served'. Clarify: what specific network position and action does the attacker take that causes the browser to send the initial request in plaintext rather than over TLS?
 
  
 
-**Assessment:** The answer correctly identified the binding constraint as application-side connection-pool contention rather than Postgres saturation, and the refinement recovered the blocking-acquire mechanism that converts capacity shortfall into latency rather than immediate error. The mechanism invariant for B3 is satisfied. The remaining gap is at B4: the proposed mitigation (doubling pool size to 40 per instance) is not stress-tested against Postgres max_connections=200, the specific 'idle in transaction' signature visible in pg_stat_activity is not connected to transaction scope (work being held inside an open transaction), and the canonical industry mitigation at this scale is not named or dismissed. The reasoning is sound but operates at the level of one system rather than the boundary between two.
+**Assessment:** The answer correctly places the attacker on-path at the local-network/gateway layer (ARP/routing) and recognizes that a plaintext window precedes TLS, which the refinement sharpened. However, it inverts what HSTS does — it never states that HSTS causes the browser to upgrade http:// to https:// before the request is ever sent — and it names a fabricated mechanism for the first-visit residual instead of the established one. The gaps are in why the header is sufficient on return visits and in identifying the named list-based mechanism that removes the trust-on-first-use exposure.
 
 **Literature**
 
-- [remediation] Release It! Design and Deploy Production-Ready Software (2nd ed.) — Ch. 5 §Blocked Threads and §Bulkheads (focused chapter on the missing mechanism: bounded resource pools, blocking acquisition, and the propagation pattern that converts capacity exhaustion into latency) — ~45m
-- [growth] PgBouncer Documentation — Pooling Modes and the Connection-Count Decoupling Pattern — Connects directly to the doubled-pool tradeoff in this answer: transaction-mode pooling is the industry-standard mechanism for decoupling application-tier connection count from Postgres backend connection count, which is the missing B4-level dismissal of the 'just raise the pool' alternative. — ~30m
+- [remediation] RFC 6797: HTTP Strict Transport Security (HSTS) — §5 HSTS Mechanism Overview and §8.3 'URI Loading and Port Mapping' — how a UA upgrades http to https before sending; plus §12.1 'No Bootstrap MITM Defense' for the first-visit gap — ~45m
+- [remediation] HSTS Preload List Submission — Landing page + 'How does it work?' — the preload directive and the browser-baked list that removes trust-on-first-use exposure — ~10m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q2 · ai-llm · function-schema-design · pre 2 → post 3 · ceiling b2 · transitional b3</samp></summary>
+<summary><samp>q2 · ai-llm · rag-chunk-overlap · pre 2 → post 3 · ceiling — · transitional b1–b3</samp></summary>
 
 <small>
 
  
 
-**Scenario:** An LLM agent has a tool `transfer_funds(from_account: str, to_account: str, amount_usd: float, currency: str)` exposed via function-calling. In production, you observe that ~3% of calls have semantically wrong arguments: `currency='usd'` instead of `'USD'`, `amount_usd` passed as a string `'100.50'`, or `from_account` and `to_account` swapped when the user phrasing is ambiguous. A junior proposes 'just validate server-side and return a 400 — the model will figure it out.' Explain the mechanism by which a server-side 400 does or does not produce model recovery in an agent loop. Then describe two concrete schema-design or prompt-design changes that reduce the rate of these errors at the source, and name the tradeoff of each.
+**Scenario:** A RAG system over technical manuals splits documents into fixed 512-token chunks with zero overlap. Users report that answers to questions whose relevant content spans a chunk boundary are frequently incomplete. A teammate proposes adding a 50-token overlap between adjacent chunks. Explain (a) the mechanism by which zero-overlap chunking causes boundary-spanning answers to fail at retrieval time — be specific about what the embedding represents and why a query embedding may match neither neighbouring chunk well; (b) how adding overlap changes the retrieval behaviour and what it gives up (name the cost dimensions); and (c) one alternative approach that addresses boundary loss differently from raw overlap, and the tradeoff that distinguishes it from the overlap approach.
 
  
 
-**Refinement:** You said 'call from a sandboxed context, in a new isolated instance. prevents context bias/reloop'. Clarify: what specific content from the prior context window causes the re-called model to repeat the same malformed argument, and how does isolation remove that cause rather than just resetting it?
+**Refinement:** You said 'it gives up similarity/relevance in the chunks at retrieval time/treats each individual retrieval as distint and discrete rather than continious'. Clarify: what property of how a dense embedding is computed over a fixed token window causes a boundary-straddling concept to be underrepresented in both neighbouring chunk vectors, even before any retrieval decision is made?
 
  
 
-**Assessment:** The answer recognises that a bare 400 does not produce recovery and correctly identifies the conditioning context (prior args + uninformative error) as the cause — a non-trivial post-refinement insight. The gap is twofold: (1) the canonical vocabulary and primitives are absent (tool_result-as-conditioning-message, constrained/structured decoding, enum schemas, structured error envelope with field/expected/observed), and (2) the question explicitly asked for two concrete schema- or prompt-design changes with a named tradeoff each, and the response delivered general principles ('bind tight', 'win/lose conditionals', 'sandbox') rather than two specific changes each paired with a specific tradeoff axis. The 'sandbox / isolate' proposal also goes unexamined for its residual cost of discarding user intent.
+**Assessment:** The answer locates the right domain and, after the refinement probe, arrives at the correct directional insight — that a fixed-window dense embedding's representation biases toward the bulk/body of the chunk, leaving a boundary-straddling concept underrepresented in both neighbouring vectors before any retrieval decision. The gap is in mechanism precision and vocabulary: the pooling operation that produces one vector per window is never named, 'identity/content hashing' and naming Deberta as the embedder point the wrong way on what an embedding is, and the proposed alternative is a hand-rolled context-stream rather than the canonical parent-child / sentence-window pattern that decouples retrieval granularity from context granularity. The cost dimensions and the tradeoff distinguishing the alternative from raw overlap are gestured at but not named as the question explicitly required.
 
 **Literature**
 
-- [remediation] Structured Outputs and Function Calling — Structured Outputs Guide — full page: grammar-enforced decoding, JSON Schema with enums for categorical fields, and the Function Calling Guide section on tool_result message shape and tool_call_id linkage across iterations — ~45m
-- [remediation] Building Effective Agents — §Tool design and §Agent control loops — the section on tool result envelope shape and how error metadata conditions the next model turn — ~30m
+- [remediation] Chunking Strategies for LLM Applications — §Chunk Size Considerations and §Content-Aware Chunking — one focused read on how chunk size and pooled-embedding semantics interact, and why a single vector averages over the window — ~25m
+- [remediation] Sentence-Transformers: Retrieve & Re-Rank and Semantic Search — §'Bi-Encoder vs. Cross-Encoder' and §Semantic Search — one chapter on how a bi-encoder produces one independent dense vector per text and why that is semantic, not a hash — ~20m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q3 · security · csrf-double-submit-cookie · pre 2 → post 2 · ceiling — · transitional b1</samp></summary>
+<summary><samp>q3 · frontend · intersection-observer-vs-scroll-listener · pre 2 → post 2 · ceiling — · transitional b1</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A web app uses session cookies (HttpOnly, Secure, SameSite=Lax) for authentication and a double-submit-cookie CSRF defense: a non-HttpOnly `csrf_token` cookie that JavaScript reads and echoes back in an `X-CSRF-Token` request header. A new requirement adds a third-party widget on `widgets.partner.com` that needs to make authenticated POST requests to `api.example.com` on the user's behalf via fetch with `credentials: 'include'`. A teammate proposes changing the session cookie to SameSite=None to enable this. Explain mechanically what protections SameSite=Lax was providing that SameSite=None removes, and whether the double-submit-cookie CSRF token is sufficient compensation. Identify one residual attack class that the proposed change opens up that the existing token does not defend against.
+**Scenario:** A media-heavy feed page (think a generic image-grid site, PicWall) lazy-loads images by attaching a scroll event listener that, on each scroll event, calls getBoundingClientRect() on every off-screen image to decide whether to load it. The page janks badly on long feeds. Explain (a) the two distinct mechanisms by which this implementation causes jank — be precise about scroll event firing cadence and what getBoundingClientRect() forces the browser to do mid-scroll; (b) why replacing it with IntersectionObserver fixes both, mechanically (what work moves off the main thread / out of the synchronous path); and (c) one thing IntersectionObserver does NOT give you for free that the scroll-listener approach did, and the tradeoff that implies.
 
  
 
-**Refinement:** You said 'the double submit cookie'. Clarify: what property of the attacker's origin prevents them from reading the csrf_token cookie value, and how does SameSite=None change whether that property holds for a cross-site request?
+**Refinement:** You said 'getBoundingClientRect() is probably doing a top-level parsing of the dom tree to get the bounds for the draw'. Clarify: what specific browser rendering pipeline stage does calling getBoundingClientRect() inside a scroll handler force to run synchronously, and why does that stage become expensive when called repeatedly on many elements in a single event?
 
  
 
-**Assessment:** The answer correctly identifies CSRF, SameSite, and double-submit as the relevant primitives and recognizes that SameSite=None expands attack surface, but inverts the mechanics of the defense: it attributes the protective property to SameSite=Lax itself rather than to the Same-Origin Policy preventing an attacker origin from reading the csrf_token cookie. The refinement probed exactly this property and the post-refinement clarification doubled down on the inversion (claiming None blocks same-site reads). The residual attack class proposed (clickjacking) is real but orthogonal to the SameSite change — the gap is in the subdomain/cookie-scope class of residual that the SameSite=None change specifically enables.
+**Assessment:** The answer correctly identified the two surface culprits (scroll-bound listener + per-element getBoundingClientRect) and correctly flagged getBoundingClientRect as a synchronous call, but never named the specific pipeline stage it forces — a style/layout flush (forced synchronous layout, a.k.a. layout thrashing) — nor the precise scroll-event cadence that multiplies it. The IntersectionObserver explanation substituted Suspense/microtask machinery for the actual mechanism (intersection computed asynchronously, off the synchronous scroll path, delivered only on threshold crossings). The refinement probe pointed directly at the rendering-pipeline stage and the answer still routed into thread/microtask scheduling rather than layout. Part (c) reached for 'pagination/scroll-position' as the lost capability but framed it through a wrong heuristic-pagination model rather than the precise-scroll-geometry tradeoff.
 
 **Literature**
 
-- [remediation] OWASP Cross-Site Request Forgery Prevention Cheat Sheet — §Token-Based Mitigation → 'Double Submit Cookie' and §'Defense in Depth Techniques → SameSite Cookie Attribute' — read both subsections together so the cookie-attachment policy (SameSite) and the read-prevention policy (SOP + cookie scoping that makes double-submit work) are explicit as two separate, layered defenses. — ~25m
-- [remediation] MDN Web Docs — Using HTTP cookies — Chapter sections 'Security' and 'Define where cookies are sent' (covering Domain, Path, Secure, HttpOnly, and SameSite=Lax/Strict/None semantics) — read both sections; the gap is in the underlying cookie-scoping and same-origin-policy model that the answer's mental model lacks. — ~30m
+- [remediation] Avoid large, complex layouts and layout thrashing — Chapter: 'Avoid forced synchronous layouts' and 'Avoid layout thrashing' — the read-after-write reflow loop and getBoundingClientRect forcing a synchronous style+layout flush — ~20m
+- [remediation] IntersectionObserver API — Section: 'Intersection observer concepts and usage' and 'How does it work' — asynchronous, out-of-band threshold-crossing callbacks vs. synchronous scroll-handler geometry — ~25m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q4 · frontend · react-suspense-data-fetching · pre 2 → post 2 · ceiling — · transitional b1</samp></summary>
+<summary><samp>q4 · data-engineering · broadcast-join-vs-shuffle-join · pre 2 → post 2 · ceiling — · transitional b1</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A React dashboard page renders three independent widgets: UserProfile, RecentOrders, and Recommendations. Each widget calls a separate API and uses `<Suspense fallback={<Spinner/>}>` boundaries individually. The current code fetches data inside each child component via a use-hook pattern (e.g., `use(fetchProfile())` called in the component body). Users report the page feels slow even though each individual request returns in ~150ms. Explain the mechanism — specifically, what fetch ordering does this code structure produce and why? Then explain what restructuring eliminates the problem, and what UX tradeoff you accept when fetches are issued in parallel and held behind a single boundary vs. individual boundaries.
+**Scenario:** A daily Spark batch job joins a 2 TB fact table against a 40 MB dimension table on a single key. By default it triggers a shuffle (sort-merge) join and is slow. An engineer suggests forcing a broadcast join. Explain (a) the mechanism of a shuffle/sort-merge join and why the 40 MB dimension makes it unnecessarily expensive here — be specific about what gets moved across the network; (b) what a broadcast join does instead, mechanically, and why that eliminates the expensive step; and (c) the failure mode and tradeoff of broadcasting — what happens if the engineer broadcasts a table that is too large, and where that cost lands (name the component). Give a rough sense of where the size threshold sits and why it is bounded.
 
  
 
-**Refinement:** You said 'the call is widget calls api -> component in api calls use-effect -> waits 150ms suspense also triggered this whole time'. Clarify: what ordering relationship between a parent component rendering and its child components rendering explains why the three 150ms fetches do not overlap in this code structure?
+**Refinement:** You said 'The full table could overwhelm the endpoint, or even cause cascading failures'. Clarify: which specific component in the Spark architecture receives the full broadcast table on every executor, and why that component — not the network — is typically the binding constraint on broadcast table size?
 
  
 
-**Assessment:** The response correctly identified that the per-child Suspense boundaries combined with fetch initiation inside child render bodies produce a waterfall, but never named the mechanism that eliminates it — hoisting fetch initiation above the suspending children so all promises are in-flight before any child renders. The refinement probe directly invited the parent↔child render-ordering explanation, and the post-refinement answer inverted React's render model (claimed parent renders only after children do, propagating upward) which is a primitive misunderstanding of the top-down render→descend→suspend cycle. The tradeoff discussion gestured at the right axis but did not name progressive reveal vs slowest-wins atomic reveal, nor layout shift as the cost of independent boundaries.
+**Assessment:** The answer holds the correct domain — broadcast-vs-shuffle join selection — but the mechanism is described through a borrowed messaging/pub-sub abstraction rather than Spark's actual execution model: it never states that sort-merge hash-partitions and shuffles both sides (the 2 TB fact being the dominant cost), nor that broadcast ships the small side to every executor for a local map-side join. The refinement probe targeted exactly the binding-constraint component, and the candidate honestly disclaimed knowledge, guessing at a state-log/block-partitioning structure rather than naming where the broadcast table actually lands and why memory — not network — bounds its size. The gap is in the physical join-execution mechanism and the memory-replication cost model; the reader should work through how each join physically moves data and which Spark component holds the broadcast copy.
 
 **Literature**
 
-- [remediation] React Docs — <Suspense> — Pitfalls §'Revealing nested content as it loads' and §'Showing stale content while fresh content is loading', plus Troubleshooting §'My component suspends when I update its state' — focused subsection on Suspense throwing/promise mechanics and how fetch-initiation-in-render produces waterfalls — ~30m
-- [remediation] React as a UI Runtime — Sections 'Rendering' and 'Reconciliation' — focused chapter on the top-down parent→child render descent model that the refinement inverted — ~45m
+- [remediation] Spark: The Definitive Guide — Ch. 19 §How Spark Performs Joins — the shuffle (sort-merge) join vs. the broadcast join, including which side is sent where — ~45m
+- [remediation] Spark SQL Performance Tuning — §Broadcast Hint for SQL Queries and spark.sql.autoBroadcastJoinThreshold — where the broadcast table is collected and why driver/executor memory bounds its size — ~15m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q5 · ml-engineering · gradient-accumulation · pre 1 → post 1 · ceiling —</samp></summary>
+<summary><samp>q5 · sre · connection-draining-load-balancer · pre 2 → post 3 · ceiling — · transitional b1–b3</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A team is fine-tuning a 7B-parameter transformer on a single 24GB GPU. The original paper used a global batch size of 256, but they can only fit micro_batch_size=2 in memory. A junior implements gradient accumulation with accumulation_steps=128 to reach effective batch size 256, keeping the original learning rate. Loss curves look unstable and final eval metrics are worse than expected. Explain mechanically what gradient accumulation does and why it is (or is not) equivalent to a true batch of 256. Then identify two specific places where this naive implementation can silently produce a result that diverges from large-batch training — name the mechanism of each, not just the symptom.
+**Scenario:** A web service behind an L7 load balancer does rolling deployments. During each deploy, a small but consistent spike of 502/504 errors appears for clients, even though new pods pass readiness checks before old pods are removed. Explain (a) the mechanism producing the errors despite readiness gating — be specific about the race between the load balancer's view of backend health and the actual termination of an old backend, including the role of in-flight and keep-alive connections; (b) how enabling connection draining (deregistration delay) on the load balancer changes the shutdown sequence and why that removes the errors; and (c) one residual case that connection draining alone does NOT fix, and the additional mechanism that closes it.
 
  
 
-**Refinement:** You said 'gradient is what constitutes how the model deals with the loss function and optimizes over it throughout the runs'. Clarify: what mathematical operation occurs across the 128 micro-batches before the optimizer takes a step, and how does that operation relate to what would happen if all 256 samples were present in a single forward pass?
+**Refinement:** You said 'letting consumers finish and clean up'. Clarify: what specifically happens to a keep-alive connection that is idle (no in-flight request) during the draining window, and why that behavior produces a residual error case that draining alone does not cover?
 
  
 
-**Assessment:** The question tests whether the answerer can state the mechanical contract of gradient accumulation — per-micro-batch backward, gradient summation into a buffer, single optimizer step — and identify two specific places where that contract silently breaks (canonically: BatchNorm computing statistics over the size-2 micro-batch rather than the would-be global batch, and the mean-vs-sum loss-reduction convention determining whether the accumulated gradient is correctly scaled). The original response talks around the topic with vocabulary about loss curves, convergence, and warmup windows but never states what gradient accumulation does mechanically, and the two named divergence sites (warmup window 'cut in half,' LR-decay incoherence) are symptom-level rather than mechanism-level. The refinement probe asked directly for the mathematical operation across the 128 micro-batches; the answerer acknowledged not knowing and substituted a 'sampling the loss curve' analogy, which moves further from the mechanism rather than closer. The gap is at the level of the gradient-summation contract itself, not at any downstream subtlety.
+**Assessment:** The answer correctly localizes the residual failure to the idle keep-alive connection that connection draining cannot observe or wait on, and recognizes it requires explicit retirement rather than passive drain — that core distinction is the heart of part (c). The gap is in the bounding mechanism: it does not state how draining is bounded (LB stops opening new connections and drains in-flight ones up to the deregistration delay) or at what cost (slower deploy), and it names the retirement mechanism in language-runtime terms (cancellation tokens, RAII guards, circuit breaker) instead of the HTTP-layer mechanism that actually closes the case. The refinement reached the right shape of the problem but reached for in-process resource-management vocabulary where the protocol-level keep-alive retirement signal was the answer.
 
 **Literature**
 
-- [remediation] Deep Learning — Ch. 8 'Optimization for Training Deep Models' — focused chapter §8.1 'How Learning Differs from Pure Optimization' and §8.3 'Basic Algorithms' covering minibatch gradient estimation, gradient as the mean over the batch, and how batch size affects the variance of the gradient estimate. — ~3h 0m
-- [remediation] Accurate, Large Minibatch SGD: Training ImageNet in 1 Hour — Full paper — §2 'Large Minibatch SGD' (linear scaling rule and its derivation) and §3 'Subtleties and Pitfalls' (gradient aggregation, BatchNorm behavior under micro-batching, warmup as a remedy for the LR-scale interaction). At B3 the focused chapter would suffice, but here the answerer needs the explicit derivation that ties effective batch size to gradient summation and to BN-over-micro-batch — the canonical reference for both of the 'two specific places' the question asks for. — ~1h 30m
+- [remediation] learnk8s — Graceful shutdown and zero downtime deployments in Kubernetes — §'Sending traffic to Pods before they are ready' through §'Delaying shutdown to wait for in-flight requests' — the one focused chapter covering endpoint-propagation lag, preStop sleep, and the SIGTERM/deregistration ordering — ~25m
+- [remediation] HTTP/1.1 Connection Management & HTTP/2 GOAWAY — MDN / RFC 9113 — MDN 'Connection management in HTTP/1.x' §Keep-alive and the Connection header; companion RFC 9113 §6.8 GOAWAY — the focused subsection on how a server retires a persistent connection it intends to close — ~20m
 
 </small>
 </details>
