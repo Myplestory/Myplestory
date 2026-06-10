@@ -41,145 +41,142 @@ breadth: systems/distributed, backend, sre, ml, ai/llm, frontend, data, security
 bar: consistent ≥3 across all 8 swe fields</i></samp></sub>
 
 ```
-industry     swe                                  updated         2026-06-06
-scope        cross-domain · grab-bag              duration        43m 39s
+industry     swe                                  updated         2026-06-10
+scope        cross-domain · grab-bag              duration        1h 12m
 calibration  b3 "practitioner"                    rotation bias   underindexed-weighted
 
                                               b₂  b3  b₄
-q1  security           secret-rotation         ₃   3   ₂
-q2  systems-distributedheartbeat-failure       ₅   4   ₃
-q3  sre                rolling-update-surge    ₂   2   ₂
-q4  backend            soft-delete-vs-hard     ₂   2   ₂
-q5  ml-engineering     feature-normalization   ₃   2   ₂
-
-strengths    false-positive-failover-tradeoff · heartbeat-failure-detection · phi-accrual-detector
-gaps         deployment-capacity-headroom · feature-normalization-train-test-fit · maxsurge-maxunavailable-tradeoff · partial-unique-index
+q1  sre                dns-ttl-failover        ₃   3   ₂
+q2  ai-llm             reranker-cross-encoder  ₃   3   ₂
+q3  frontend           search-as-you-type      ₃   3   ₂
+q4  backend            soft-delete-vs-hard     ₃   3   ₁
+q5  data-engineering   medallion-architecture  ₅   3   ₃
 
 score (dreyfus)    1 (novice) → 3 (competent) → 5 (mastered)
 band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 ```
 
 <details>
-<summary><samp>q1 · security · secret-rotation-mechanism · pre 2 → post 3 · ceiling — · transitional b1–b3</samp></summary>
+<summary><samp>q1 · sre · dns-ttl-failover-tradeoff · pre 2 → post 3 · ceiling b1 · transitional b2–b3</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A SaaS platform, 'LedgerVault', stores customer financial documents encrypted at rest in object storage. The security team currently encrypts every object directly with a single master key held in a KMS. They want to support periodic master-key rotation (e.g., quarterly) WITHOUT having to re-encrypt and rewrite every object in the bucket. A junior engineer proposes 'just rotate the KMS key and re-encrypt everything in a nightly batch job.' Explain why envelope encryption (a per-object data encryption key wrapped by the master key) is the standard mechanism here, what specifically it lets you rotate cheaply versus what it does NOT rotate, and what the re-encrypt-everything approach gives up. Be concrete about which ciphertext changes on rotation and which does not.
+**Scenario:** Company X runs a public API behind a single A-record (api.example.com) pointing at the active region's load balancer IP. During a regional outage their runbook is: update the DNS record to point at the standby region's IP with a 60-second TTL. In the post-incident review, a chunk of traffic kept hitting the dead IP for 20+ minutes despite the record having flipped. Explain the mechanism behind why a low TTL did not guarantee fast cutover — be specific about what TTL actually controls and which parties in the resolution path can ignore it. Then explain why a stable Anycast/VIP fronted by health-checked load balancers moves the failover decision to a different layer, and what that buys you over DNS-based failover. Name the tradeoff that approach introduces (it is not free).
 
  
 
-**Refinement:** You said 'cheap rotations of the encrypted secret key'. Clarify: which specific ciphertext artifact changes on a master-key rotation under envelope encryption, and which ciphertext artifact remains byte-for-byte identical to what was stored before the rotation?
+**Refinement:** You said 'TTL bounds the time to live on that one load balancer nameserver/records, not access from consumer side'. Clarify: which specific actors in the resolution chain are permitted by protocol to serve a cached answer past TTL expiry, and what mechanism gives them that permission?
 
  
 
-**Assessment:** The original response inverted the mechanism — claiming per-object keys rotate while the master-key ciphertext stays fixed, and importing irrelevant signing/hash-round vocabulary. The refinement probe corrected the inversion: the answerer now places the changing artifact on the master-key/KMS side and the unchanged bulk ciphertext downstream, which is the right direction. The remaining gap is precision about *which* artifact re-wraps: it is the small wrapped-DEK blob that changes, the DEK plaintext value and the payload ciphertext do not, and the answer does not yet state why that makes rotation cheap or what the re-encrypt path actually buys (DEK/payload rotation after compromise).
+**Assessment:** The response correctly identifies that low TTL did not guarantee cutover because the record is cached below the authoritative server, and the refinement honestly retracts the original (wrong) claim that TTL is enforced 'at the load balancer nameserver.' However, it still misidentifies which actors in the resolution path are protocol-permitted to serve stale answers — conflating CDN/edge caches with recursive and stub/client resolvers — and the explanation of why Anycast/VIP moves failover to another layer invents a DNS-cache-invalidation flow rather than describing routing-layer (BGP/health-check) failover. The named tradeoff is also off-target. Read the cited DNS-TTL and Anycast sources to pin which caching parties ignore TTL and why the Anycast/VIP tradeoff is operational/routing complexity, not bandwidth.
 
 **Literature**
 
-- [remediation] AWS Key Management Service Developer Guide — Envelope Encryption — §Envelope encryption and §Rotating AWS KMS keys — the specific subsection on how automatic key rotation re-wraps the data key without re-encrypting data — ~20m
-- [remediation] Cryptography Engineering — Ch. 21 §Key Management — key hierarchies, key-encryption keys vs data-encryption keys, and what rotation at each layer does and does not invalidate — ~1h 0m
+- [remediation] Site Reliability Engineering — Ch. 19 'Load Balancing at the Frontend' §DNS, §Virtual IP Addresses, §Anycast — ~30m
+- [remediation] RFC 1035 / RFC 8767 (Serve-Stale) — RFC 1035 §3.2.1 and §7 (TTL as caching maximum-hint); RFC 8767 (resolver serve-stale behavior) — ~25m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q2 · systems-distributed · heartbeat-failure-detection · pre 3 → post 4 · ceiling b3 · transitional b4–b5</samp></summary>
+<summary><samp>q2 · ai-llm · reranker-cross-encoder · pre 3 → post 3 · ceiling b1 · transitional b2–b3</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A distributed coordination service runs 5 nodes that detect each other's liveness via periodic heartbeats. Operators tune two parameters: heartbeat interval and the timeout after which a peer is declared dead. During a brief network hiccup (200ms of packet loss), the cluster declared a healthy node dead and triggered an unnecessary failover, causing a leadership churn. Explain the tradeoff governed by the timeout value: what you give up by setting it aggressively low versus conservatively high. Then explain why a fixed timeout is a blunt instrument under variable network latency, and describe at a mechanism level how an adaptive (phi-accrual-style) detector improves on it — what it measures and what it outputs instead of a binary alive/dead.
+**Scenario:** A SaaS support-assistant team has a RAG pipeline that does bi-encoder dense retrieval (cosine over precomputed embeddings) and feeds the top-50 chunks to the LLM. Answer quality is mediocre — relevant passages are in the top-50 but not the top-5 the model actually attends to. A teammate proposes adding a cross-encoder reranker as a second stage over the top-50. Explain the mechanism: how does a cross-encoder score a (query, passage) pair differently from the bi-encoder, and why does that produce better relevance ordering? Then explain WHY the cross-encoder cannot simply replace the bi-encoder as the first-stage retriever over the full corpus — what property of the bi-encoder makes first-stage retrieval over millions of chunks tractable that the cross-encoder lacks? Finally, name the ceiling this two-stage design cannot cross: if a relevant passage is absent from the top-50, what does reranking do for it, and why?
 
  
 
-**Refinement:** You said 'it measures multiple signals like throughput, calls, resource utilization, etc'. Clarify: what specific statistical property of heartbeat arrival times does a phi-accrual detector compute, and what does it output in place of a binary threshold comparison?
+**Refinement:** You said 'the cross encoder comprehensively matches and ranks out of those candidates'. Clarify: what happens inside the cross-encoder's forward pass — specifically, what interaction between query tokens and passage tokens occurs that is absent when the bi-encoder encodes each independently — that makes the cross-encoder's relevance score higher fidelity?
 
  
 
-**Assessment:** Pre-refinement the answer nailed the timeout tradeoff and correctly argued why a fixed value is blunt under jitter, but misidentified the adaptive mechanism as load-driven timeout adjustment. The refinement probe moved it onto the right track — it recognized that the detector builds a baseline from the statistical history of heartbeat inter-arrival times over a sliding window and emits a graded health signal instead of a binary verdict. The remaining gap is the precise statistical object the detector outputs and how a consumer acts on it; the reader should pin down exactly what 'phi' is computed from and what it represents before consuming it.
+**Assessment:** The answer correctly partitions the two-stage design — cheap bi-encoder candidate generation, expensive cross-encoder rerank, and a recall ceiling — but mischaracterises the single mechanism the question turns on. It repeatedly attributes the cross-encoder's fidelity gain to scoring queries against each other, whereas the gain comes from query tokens and passage tokens attending to each other inside one joint forward pass. The 'cannot replace the bi-encoder' answer never names the load-bearing property (passage embeddings are precomputable for the bi-encoder but a cross-encoder score is irreducibly per-(query,passage)-pair, so first-stage use would require a full forward pass over every chunk). The refinement probe asked exactly for the token-interaction detail and the answerer self-reported that the primitive eluded them — the gap did not close.
 
 **Literature**
 
-- [remediation] The Phi Accrual Failure Detector — §3 'The φ Accrual Failure Detector' and §4 'Implementation' — the inter-arrival sampling window, normal-distribution estimation, and the φ = -log10(P_later(t)) output — ~40m
-- [growth] Designing Data-Intensive Applications, Ch. 8 §The Truth Is Defined by the Majority / §Knowledge, Truth, and Lies — Connects this question's accrual-detector mechanism to the broader design-space framing: how unreliable detection couples to leader leases, fencing tokens, and why no detector can be both perfectly complete and perfectly accurate over an asynchronous network. — ~1h
+- [remediation] Passage Re-ranking with BERT — §3 Method — the [CLS] query [SEP] passage [SEP] input construction and how the joint encoding yields the relevance score (one focused section) — ~20m
+- [remediation] Retrieve & Re-Rank — The 'Bi-Encoder vs. Cross-Encoder' subsection plus the retrieve-then-rerank diagram — why no independent embeddings exist for cross-encoders and why that forbids first-stage use over large collections — ~15m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q3 · sre · rolling-update-surge-unavailable · pre 2 → post 2 · ceiling — · transitional b1</samp></summary>
+<summary><samp>q3 · frontend · search-as-you-type · pre 2 → post 3 · ceiling — · transitional b1–b3</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A team runs a stateless API on Kubernetes with a Deployment of 10 replicas sized to run at ~80% CPU at peak. They configure a RollingUpdate with maxSurge=0 and maxUnavailable=2 and notice that deploys during peak traffic cause elevated latency and some 503s. Explain the mechanism: what maxSurge and maxUnavailable each control during a rolling update, and why this specific combination reduces serving capacity mid-deploy. Then compare the tradeoff of flipping to maxSurge=2, maxUnavailable=0 — what it costs and what it buys — and state the precondition under which the maxSurge approach can still fail to protect capacity.
+**Scenario:** A frontend team builds a search-as-you-type box that fires a request on each keystroke and renders whatever response arrives. Users report that after typing quickly, the results panel sometimes shows results for a partial query (e.g. 'reac') even though the box reads 'react hooks'. Decompose the problem into the three independent concerns at play. (1) For the keystroke cadence: contrast debounce vs throttle and state which one fits this workload and why. (2) For the in-flight requests: name the mechanism that cancels superseded requests so an older one cannot resolve into the UI, and where in the component lifecycle you wire it. (3) For the response-ordering failure itself: explain precisely why a trailing-edge debounce timer used ALONE does not fix it (give the request-A-then-request-B trace), and name the reconciliation primitive you'd use when request cancellation is unavailable. Also state why a backend circuit breaker / retry-with-backoff does NOT address this ordering bug.
 
  
 
-**Refinement:** You said 'surge has to handle that 20% flawlessly'. Clarify: what cluster-level resource condition determines whether the extra surge pods can be scheduled at all, independent of CPU headroom on existing nodes?
+**Refinement:** You said 'the timer does not take into account serverside processing delays/the visibility in the ordering the server sees, not the egress from clientside'. Clarify: walk through the specific request-A-then-request-B sequence that produces the stale render even when both requests are fired from a single debounced emission.
 
  
 
-**Assessment:** The answer never establishes what maxSurge and maxUnavailable actually control during a Deployment rollout — it treats maxSurge as utilization-spike protection and maxUnavailable as a node-health threshold, so the central capacity-loss mechanism (terminating ready replicas before replacements exist, dropping an 80%-CPU fleet to a level that saturates survivors) is not derived. The refinement probe pointed directly at the scheduling precondition (allocatable cluster headroom for the surge pods, independent of per-node CPU), and the response guessed network throughput/queue health instead, leaving the B3 boundedness 'why' unmet. The gaps are in (1) the rollout-parameter semantics and (2) the cluster-scheduling resource that gates surge-pod admission.
+**Assessment:** The answer correctly chooses debounce for cadence and correctly argues that a backend circuit breaker / retry-with-backoff cannot fix a race determined on the client receive path, and the refinement does produce an ordered A-then-B trace plus a gesture at a monotonic ordering token. The gaps are (1) the in-flight cancellation mechanism is never named as the standard frontend primitive wired into the effect cleanup — it is replaced by an inbox/outbox server pattern; (2) the reconciliation is described as a CAP / two-systems consensus problem rather than the canonical single-client response-order race with its specific client-side reconciliation primitive; and (3) the A-then-B trace relies on network drop/retry rather than the simpler two-debounced-fires-resolving-out-of-order case the question asked for. Read the cancellation-in-cleanup and request-sequence-reconciliation references to see the named primitive and where it wires.
 
 **Literature**
 
-- [remediation] Kubernetes Documentation — Deployments: Rolling Update Strategy — §Rolling Update Deployment and §Max Unavailable / Max Surge — the maxUnavailable/maxSurge parameter pair and how the controller terminates old / creates new ReplicaSet pods during a rollout — ~20m
-- [remediation] Kubernetes Documentation — Scheduling: Resource Requests and Node Allocatable — §Node Allocatable and Resource Management for Pods and Containers §How Pods with resource requests are scheduled — why a surge pod stays Pending when no node has allocatable CPU/memory to satisfy its requests, independent of live CPU utilization — ~25m
+- [remediation] AbortController — Web APIs — AbortController — 'Examples' and 'signal' subsection (the abort()-on-fetch cancellation pattern) — ~15m
+- [remediation] A Complete Guide to useEffect — race conditions in fetch — 'A Complete Guide to useEffect' — the data-fetching race-condition subsection (response order independent of request order; cancellation flag / AbortController in cleanup) — ~20m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q4 · backend · soft-delete-vs-hard-delete · pre 2 → post 2 · ceiling — · transitional b1</samp></summary>
+<summary><samp>q4 · backend · soft-delete-vs-hard-delete · pre 2 → post 3 · ceiling — · transitional b1–b3</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A backend service for 'TaskHub' models users with a `deleted_at` timestamp column for soft deletes (NULL = active). They have a UNIQUE constraint on `email`. A user deletes their account, then a new person tries to register with that same email — and the insert fails on the unique constraint, even though the old row is 'deleted'. Separately, an analytics query accidentally counted deleted users because it forgot a `WHERE deleted_at IS NULL` clause. Explain the mechanism behind both problems (why the unique constraint still bites, and why soft delete leaks into queries), then give the database-level fix for the uniqueness problem using a partial unique index — state precisely what predicate the index carries and why that resolves the collision while still preventing two ACTIVE users from sharing an email. Name one tradeoff soft delete imposes that hard delete does not.
+**Scenario:** A backend team adds soft-delete (a deleted_at timestamp, NULL when active) to a users table that already has a UNIQUE constraint on email. After deploying, two problems surface: (a) a user who deletes their account can no longer re-register with the same email — the insert fails; (b) an admin 'active user count' report is now slightly inflated. Explain the mechanism behind each. For (a), say precisely why the existing unique constraint collides with the soft-deleted row, and give the exact index construct that enforces 'unique among active rows only' — state the predicate and why a NULL deleted_at row satisfies it. For (b), explain why the count went wrong and what invariant every read query now carries. Finally, name one cost soft-delete imposes that hard-delete does not, beyond these two bugs.
 
  
 
-**Refinement:** You said 'The predicate the index carries is a check on the null column, to determine state at query time'. Clarify: what is the exact SQL predicate expression on that index, and why does a NULL value in deleted_at satisfy or not satisfy it?
+**Refinement:** You said 'the pure unique constraint scopes the access to only readtime, and the row is declared as alive by postgres therefore the insert fails'. Clarify: what property of the UNIQUE index — separate from any locking — causes the second INSERT to be rejected even when the first row has a non-NULL deleted_at value?
 
  
 
-**Assessment:** The answer landed on the right tool (partial unique index) and the right framing (separating active from deleted rows) but never produced the gating mechanism: the index predicate and why it excludes soft-deleted rows from uniqueness enforcement while still catching two active rows. The explanation of why the original constraint bites was built on an incorrect lock/PK model rather than index coverage of all rows. The refinement asked directly for the predicate expression and the NULL semantics, and the answerer honestly conceded they did not know it and then described NULL incorrectly as a SELECT no-op — confirming the mechanism is not held. The gap is in how a unique constraint is a uniqueness predicate over indexed rows and how a filtered index changes the row set under enforcement.
+**Assessment:** Across both turns the answer correctly reaches for the partial unique index as the remediation but never satisfies the B3 mechanism gate: it never states the index predicate, never explains why a NULL deleted_at row is included in (and a non-NULL row excluded from) the index, and instead constructs an invented lock taxonomy ('shared exclusive', 'read-only exclusive', 'ON CONFLICT lever'). The refinement probe specifically asked for the index property separate from locking, and the answer doubled down on locking rather than identifying that the plain UNIQUE index covers all rows including the soft-deleted one. The (b) count explanation also misses that no implicit filtering occurs and the per-query WHERE deleted_at IS NULL invariant, and the named extra cost (write ordering/versioning serialization) is not the retention/filter-obligation cost soft-delete actually imposes. The gap is in why index coverage — not locking — produces the collision.
 
 **Literature**
 
-- [remediation] PostgreSQL Documentation — CREATE INDEX (Partial Indexes) — §11.8 Partial Indexes — the example 'CREATE UNIQUE INDEX ... WHERE ...' enforcing uniqueness over a subset of rows (one focused section) — ~15m
-- [remediation] PostgreSQL Documentation — Index Uniqueness Checks & Unique Indexes — §CREATE INDEX — UNIQUE clause and NULL handling: how a unique index treats every indexed row and how NULLs interact with uniqueness (one focused subsection) — ~15m
+- [remediation] PostgreSQL Documentation — Partial Indexes — §11.8 Partial Indexes — the example building a UNIQUE partial index with a WHERE predicate, and §11.5 Unique Indexes for why a plain unique index covers all rows — ~30m
+- [remediation] Patterns of Enterprise Application Architecture / Time Narrative — Soft Delete tradeoffs — The section on retaining historical rows and the obligation it imposes on every read query — ~15m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q5 · ml-engineering · feature-normalization-train-test-fit · pre 2 → post 2 · ceiling — · transitional b1–b2</samp></summary>
+<summary><samp>q5 · data-engineering · medallion-architecture · pre 3 → post 3 · ceiling b1–b2 · transitional b3–b5</samp></summary>
 
 <small>
 
  
 
-**Scenario:** An ML engineer building a churn classifier standardizes features (subtract mean, divide by std) before splitting into train and test sets — they call `StandardScaler.fit_transform` on the full dataset, then split. Validation accuracy looks great but production performance is worse than expected. Explain the mechanism of the leakage: what statistic crosses the train/test boundary when you fit the scaler on the full dataset, and why that inflates the validation metric. State the correct procedure (fit on train, transform train and test with the train-derived parameters) and explain why fitting on train only is the faithful simulation of production. Then identify why this same leakage is more dangerous inside k-fold cross-validation than in a single split, and name the mechanism that fixes it across folds.
+**Scenario:** A data team is designing a lakehouse and standardizes on a bronze/silver/gold (medallion) layering. A reviewer pushes back: 'Why not just land cleaned, conformed data directly into silver and skip bronze — bronze is duplicated storage of raw data we already have upstream.' Defend the layering by articulating the distinct PURPOSE of each layer and the mechanism each enables. Specifically: (1) what does keeping raw, append-only bronze give you that a silver-only design loses — frame this in terms of replay/reprocessing when a transformation bug or a schema-evolution requirement is discovered downstream. (2) What does silver cost you that bronze does not — name the lossy operations (dedup, conformance, type coercion) and why they are irreversible once you discard the raw rows. (3) What rigidity does a gold aggregate introduce that silver avoids, and what happens when the required aggregation grain changes? Commit to whether the reviewer's shortcut is acceptable and on what axis you'd reject it.
 
  
 
-**Refinement:** You said 'on training only is the ideal way, you want to seperate the test from the training and have the test be a complete black box/no alterations or bias in the dataset'. Clarify: what specific statistic computed from the test set's values contaminates the train-derived model when `fit_transform` is called on the full dataset before splitting, and how does that statistic's presence in the scaler parameters cause the validation metric to diverge from production performance?
+**Refinement:** You said 'roll backs are cheap on corrupted upstream normalization/dedupe at silver and gold tiers'. Clarify: what property of append-only bronze makes replay produce a deterministically identical result when the transformation logic itself has changed, rather than just restoring a prior snapshot?
 
  
 
-**Assessment:** The answer correctly identifies that this is preprocessing leakage and that something about the mean crosses the train/test boundary, but never specifies that the test set's per-feature mean and standard deviation are aggregated into the scaler parameters and then applied to the training features — the precise statistic the question and refinement both asked for. The refinement did not close this gap; the answerer drifted into a separate and incorrect claim that fit_transform corrupts the random sampling/splitting itself. The correct fit-on-train / transform-with-train-parameters procedure is stated only as a vague 'isolate the test set', and the across-fold fix (encapsulating the scaler in a Pipeline so it re-fits per fold) is explicitly unknown to the answerer. The path to the answer is understanding that any preprocessing step must derive its parameters only from data available at training time, and how cross-validation amplifies the violation.
+**Assessment:** The response correctly identifies the purpose of each medallion layer, names the lossy silver operations (dedup, coercion, conformance), articulates the gold grain-change blast radius, and commits firmly that the reviewer's shortcut is unacceptable. The targeted probe asked for the specific property of append-only bronze that makes replay deterministically reproduce a result when the transformation LOGIC has changed (as opposed to restoring a prior output snapshot). The refinement answers with ingest-time causal ordering (watermarks, hybrid clocks) rather than the load-bearing point that bronze is the immutable INPUT and replay means recomputing from raw with the new code — the distinction between regenerating a derived view and restoring a checkpoint is the gap. Read the cited replay/event-sourcing material to see why the immutable-input framing, not ordering, is what makes replay reproduce changed logic.
 
 **Literature**
 
-- [remediation] Designing Machine Learning Systems — Ch. 5 §Data Leakage — specifically the 'scaling before splitting' worked example and the rule that statistics must be computed on the training split only — ~45m
-- [remediation] scikit-learn User Guide — Pipelines and composite estimators / Common pitfalls and recommended practices — §'Data leakage' and §'How to avoid data leakage' — the Pipeline-inside-cross_val_score pattern that re-fits the scaler per fold — ~30m
+- [remediation] Designing Data-Intensive Applications — Ch. 11 §Event Sourcing and §The Unbundled Database, pp. 457–465 — raw-log replay as the substrate for deriving all downstream views — ~2h 30m
+- [remediation] Delta Lake: The Definitive Guide — Ch. 9 §Medallion Architecture — the reprocessing contract bronze provides and the silver conformance/loss tradeoff — ~45m
 
 </small>
 </details>
