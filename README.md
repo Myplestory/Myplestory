@@ -41,142 +41,144 @@ breadth: systems/distributed, backend, sre, ml, ai/llm, frontend, data, security
 bar: consistent ≥3 across all 8 swe fields</i></samp></sub>
 
 ```
-industry     swe                                  updated         2026-06-10
-scope        cross-domain · grab-bag              duration        1h 12m
+industry     swe                                  updated         2026-06-12
+scope        cross-domain · grab-bag              duration        1h 9m
 calibration  b3 "practitioner"                    rotation bias   underindexed-weighted
 
                                               b₂  b3  b₄
-q1  sre                dns-ttl-failover        ₃   3   ₂
-q2  ai-llm             reranker-cross-encoder  ₃   3   ₂
-q3  frontend           search-as-you-type      ₃   3   ₂
-q4  backend            soft-delete-vs-hard     ₃   3   ₁
-q5  data-engineering   medallion-architecture  ₅   3   ₃
+q1  ai-llm             rag-retrieval           ₄   2   ₂
+q2  backend            foreign-key-cascade     ₂   2   ₂
+q3  security           insecure-direct-file    ₄   3   ₃
+q4  systems-distributeddead-letter-queue       ₄   3   ₂
+q5  frontend           optimistic-ui-update    ₄   3   ₂
+
+gaps         foreign-key-cascade-semantics · hybrid-search-fusion · orphaned-row-cleanup · rag-retrieval-precision-recall
 
 score (dreyfus)    1 (novice) → 3 (competent) → 5 (mastered)
 band  (swecom)     b1 (technician) → b3 (practitioner) → b5 (principal)
 ```
 
 <details>
-<summary><samp>q1 · sre · dns-ttl-failover-tradeoff · pre 2 → post 3 · ceiling b1 · transitional b2–b3</samp></summary>
+<summary><samp>q1 · ai-llm · rag-retrieval-precision-recall · pre 3 → post 2 · ceiling b2</samp></summary>
 
 <small>
 
  
 
-**Scenario:** Company X runs a public API behind a single A-record (api.example.com) pointing at the active region's load balancer IP. During a regional outage their runbook is: update the DNS record to point at the standby region's IP with a 60-second TTL. In the post-incident review, a chunk of traffic kept hitting the dead IP for 20+ minutes despite the record having flipped. Explain the mechanism behind why a low TTL did not guarantee fast cutover — be specific about what TTL actually controls and which parties in the resolution path can ignore it. Then explain why a stable Anycast/VIP fronted by health-checked load balancers moves the failover decision to a different layer, and what that buys you over DNS-based failover. Name the tradeoff that approach introduces (it is not free).
+**Scenario:** A documentation search system for 'HelpDeskAI' uses pure dense vector retrieval. Users complain that exact-match queries for product codes like 'SKU-7741-X' and acronyms like 'RBAC' often miss the relevant chunk even though it exists verbatim in the corpus, while conceptual queries ('how do I reset access') work well. The team proposes adding BM25 lexical retrieval alongside the existing dense retrieval and fusing the two result lists. Explain the mechanism: why does dense-only retrieval underperform on exact tokens and acronyms, what does BM25 contribute that embeddings do not, and how does a fusion method like Reciprocal Rank Fusion combine the two ranked lists into one? State what the hybrid approach gives up compared to dense-only (e.g. tuning surface, latency, score incomparability) and name one query class where adding BM25 would not help.
 
  
 
-**Refinement:** You said 'TTL bounds the time to live on that one load balancer nameserver/records, not access from consumer side'. Clarify: which specific actors in the resolution chain are permitted by protocol to serve a cached answer past TTL expiry, and what mechanism gives them that permission?
+**Refinement:** You said 'ranks/merges into a singular list via an aggregated score through weighting'. Clarify: what specific property of Reciprocal Rank Fusion's scoring formula makes it usable across the two lists without requiring the raw scores from each retriever to be on the same scale?
 
  
 
-**Assessment:** The response correctly identifies that low TTL did not guarantee cutover because the record is cached below the authoritative server, and the refinement honestly retracts the original (wrong) claim that TTL is enforced 'at the load balancer nameserver.' However, it still misidentifies which actors in the resolution path are protocol-permitted to serve stale answers — conflating CDN/edge caches with recursive and stub/client resolvers — and the explanation of why Anycast/VIP moves failover to another layer invents a DNS-cache-invalidation flow rather than describing routing-layer (BGP/health-check) failover. The named tradeoff is also off-target. Read the cited DNS-TTL and Anycast sources to pin which caching parties ignore TTL and why the Anycast/VIP tradeoff is operational/routing complexity, not bandwidth.
+**Assessment:** The response correctly characterizes the dense-vs-lexical division of labour, the IDF intuition for why exact codes favour BM25, the hybrid tradeoffs (latency, tuning surface), and a valid no-help query class — solid B3 identification. The gap is the fusion mechanism itself: the original turn describes it only as weighted score aggregation, and the refinement probe (which targets exactly the rank-based property of RRF) is answered with an explicit disclaimer plus three invented alternatives, including a non-existent NLI-entailment pass. The claim that 'raw scores being on the same scale is irrelevant' is directionally true but justified by the wrong mechanism, so the core insight — that RRF uses position (1/(k+rank)) rather than raw score — was never reached. The reading should lead to how RRF's rank-only formula sidesteps score normalization.
 
 **Literature**
 
-- [remediation] Site Reliability Engineering — Ch. 19 'Load Balancing at the Frontend' §DNS, §Virtual IP Addresses, §Anycast — ~30m
-- [remediation] RFC 1035 / RFC 8767 (Serve-Stale) — RFC 1035 §3.2.1 and §7 (TTL as caching maximum-hint); RFC 8767 (resolver serve-stale behavior) — ~25m
+- [remediation] Reciprocal Rank Fusion outperforms Condorcet and individual Rank Learning Methods — §3 'Reciprocal Rank Fusion' — the RRFscore(d) = Σ 1/(k + rank_i(d)) formula and why k tempers high rankings — ~20m
+- [remediation] BM25 for Beginners / Pinecone Hybrid Search guide — §'Combining dense and sparse' and §'BM25' — TF/IDF lexical scoring and why dense embeddings miss high-IDF exact tokens — ~15m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q2 · ai-llm · reranker-cross-encoder · pre 3 → post 3 · ceiling b1 · transitional b2–b3</samp></summary>
+<summary><samp>q2 · backend · foreign-key-cascade-semantics · pre 2 → post 2 · ceiling —</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A SaaS support-assistant team has a RAG pipeline that does bi-encoder dense retrieval (cosine over precomputed embeddings) and feeds the top-50 chunks to the LLM. Answer quality is mediocre — relevant passages are in the top-50 but not the top-5 the model actually attends to. A teammate proposes adding a cross-encoder reranker as a second stage over the top-50. Explain the mechanism: how does a cross-encoder score a (query, passage) pair differently from the bi-encoder, and why does that produce better relevance ordering? Then explain WHY the cross-encoder cannot simply replace the bi-encoder as the first-stage retriever over the full corpus — what property of the bi-encoder makes first-stage retrieval over millions of chunks tractable that the cross-encoder lacks? Finally, name the ceiling this two-stage design cannot cross: if a relevant passage is absent from the top-50, what does reranking do for it, and why?
+**Scenario:** A backend service for 'OrderFlow' has an `orders` table and an `order_items` table with `order_items.order_id` referencing `orders.id`. The team is deciding between `ON DELETE CASCADE`, `ON DELETE RESTRICT`, and `ON DELETE SET NULL` on the foreign key, and separately considering doing the child-row cleanup in application code inside a transaction instead. Explain the mechanism of each FK option: what the database does to child rows when a parent is deleted, and which one blocks the delete. Then compare DB-enforced cascade against application-code cleanup — what does each give up (e.g. cross-table atomicity guarantees, visibility/auditability of the deletes, trigger interactions, bulk-delete lock scope)? Commit to which you'd choose for an order/order-items relationship and why.
 
  
 
-**Refinement:** You said 'the cross encoder comprehensively matches and ranks out of those candidates'. Clarify: what happens inside the cross-encoder's forward pass — specifically, what interaction between query tokens and passage tokens occurs that is absent when the bi-encoder encodes each independently — that makes the cross-encoder's relevance score higher fidelity?
+**Refinement:** You said 'ON DELETE RESTRICT, the pointer from the FK table is removed, and the rows in the children references are set to locked/some kind of exclusive no read no write lock'. Clarify: what does the database do to the parent delete operation itself when child rows exist under RESTRICT — does the parent row get removed at any point in that process?
 
  
 
-**Assessment:** The answer correctly partitions the two-stage design — cheap bi-encoder candidate generation, expensive cross-encoder rerank, and a recall ceiling — but mischaracterises the single mechanism the question turns on. It repeatedly attributes the cross-encoder's fidelity gain to scoring queries against each other, whereas the gain comes from query tokens and passage tokens attending to each other inside one joint forward pass. The 'cannot replace the bi-encoder' answer never names the load-bearing property (passage embeddings are precomputable for the bi-encoder but a cross-encoder score is irreducibly per-(query,passage)-pair, so first-stage use would require a full forward pass over every chunk). The refinement probe asked exactly for the token-interaction detail and the answerer self-reported that the primitive eluded them — the gap did not close.
+**Assessment:** The answer recognizes this is a foreign-key on-delete question and ultimately commits to CASCADE for order/order_items, but it models the database as an OS memory allocator (pointers, overwritable memory, zeroing) rather than as transactional referential actions, so each option's actual effect on child rows and on the parent delete is mischaracterized. The refinement probe asked the decisive question — whether the parent row is ever removed under RESTRICT — and the response stayed unsure and introduced a fabricated queue mechanism, then pivoted to sharding/DHT concerns unrelated to what cascade vs application cleanup trade off. The gap is in the core mechanism of referential actions: what the DB does to child rows for each action, which one aborts the parent delete, and how DB-enforced atomicity compares with application-transaction cleanup on visibility, triggers, and lock scope.
 
 **Literature**
 
-- [remediation] Passage Re-ranking with BERT — §3 Method — the [CLS] query [SEP] passage [SEP] input construction and how the joint encoding yields the relevance score (one focused section) — ~20m
-- [remediation] Retrieve & Re-Rank — The 'Bi-Encoder vs. Cross-Encoder' subsection plus the retrieve-then-rerank diagram — why no independent embeddings exist for cross-encoders and why that forbids first-stage use over large collections — ~15m
+- [remediation] PostgreSQL Documentation — §5.4 Constraints, Foreign Keys — §5.4.5 Foreign Keys — the ON DELETE action subsection (CASCADE / RESTRICT / NO ACTION / SET NULL / SET DEFAULT) — ~20m
+- [remediation] Designing Data-Intensive Applications — Ch. 7 §Atomicity and the meaning of ACID (transactions spanning multiple rows/tables) — ~40m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q3 · frontend · search-as-you-type · pre 2 → post 3 · ceiling — · transitional b1–b3</samp></summary>
+<summary><samp>q3 · security · insecure-direct-file-access · pre 3 → post 3 · ceiling b1–b2 · transitional b3–b4</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A frontend team builds a search-as-you-type box that fires a request on each keystroke and renders whatever response arrives. Users report that after typing quickly, the results panel sometimes shows results for a partial query (e.g. 'reac') even though the box reads 'react hooks'. Decompose the problem into the three independent concerns at play. (1) For the keystroke cadence: contrast debounce vs throttle and state which one fits this workload and why. (2) For the in-flight requests: name the mechanism that cancels superseded requests so an older one cannot resolve into the UI, and where in the component lifecycle you wire it. (3) For the response-ordering failure itself: explain precisely why a trailing-edge debounce timer used ALONE does not fix it (give the request-A-then-request-B trace), and name the reconciliation primitive you'd use when request cancellation is unavailable. Also state why a backend circuit breaker / retry-with-backoff does NOT address this ordering bug.
+**Scenario:** A file-sharing app, 'VaultShare', lets authenticated users download uploaded documents via `GET /download?path=<filename>`, and the handler reads `/var/app/uploads/<path>` from disk. A reviewer flags two issues: (1) a user can pass `path=../../etc/passwd` and (2) any authenticated user can read any other user's file by guessing the filename. Explain the mechanism of the path-traversal vulnerability (why `..` segments escape the intended directory and why naive string prefix checks fail). Then explain why this is also a broken-access-control problem distinct from the traversal. Commit to a fix for each: name the canonical defense for traversal (canonicalize-then-verify-within-base, or opaque ID indirection) and the defense for the authorization gap (server-side ownership lookup). Explain why fixing only the traversal does not fix the access-control issue.
 
  
 
-**Refinement:** You said 'the timer does not take into account serverside processing delays/the visibility in the ordering the server sees, not the egress from clientside'. Clarify: walk through the specific request-A-then-request-B sequence that produces the stale render even when both requests are fired from a single debounced emission.
+**Refinement:** You said '1) This is an issue with the parsing, which is both orthogonal and hinged on the...'. What breaks if that assumption is wrong?
 
  
 
-**Assessment:** The answer correctly chooses debounce for cadence and correctly argues that a backend circuit breaker / retry-with-backoff cannot fix a race determined on the client receive path, and the refinement does produce an ordered A-then-B trace plus a gesture at a monotonic ordering token. The gaps are (1) the in-flight cancellation mechanism is never named as the standard frontend primitive wired into the effect cleanup — it is replaced by an inbox/outbox server pattern; (2) the reconciliation is described as a CAP / two-systems consensus problem rather than the canonical single-client response-order race with its specific client-side reconciliation primitive; and (3) the A-then-B trace relies on network drop/retry rather than the simpler two-debounced-fires-resolving-out-of-order case the question asked for. Read the cancellation-in-cleanup and request-sequence-reconciliation references to see the named primitive and where it wires.
+**Assessment:** The answer correctly separates the two vulnerabilities and asserts the right top-level direction for each fix (a canonicalize-style traversal defense and a server-side authorization scoping), and correctly insists that containing the traversal does not close the access-control gap. The core articulation gap is twofold: it never states why naive string checks fail (the `..` is resolved by the filesystem after the application's check runs on the pre-resolution string), and it collapses canonicalize-then-verify-within-base into `../`-denylisting — which is the failing approach the prompt flagged. The refinement narrowed but did not close the gap: it reached the pwd/position-in-time intuition without naming the resolution-order mechanism or the precise canonical defense.
 
 **Literature**
 
-- [remediation] AbortController — Web APIs — AbortController — 'Examples' and 'signal' subsection (the abort()-on-fetch cancellation pattern) — ~15m
-- [remediation] A Complete Guide to useEffect — race conditions in fetch — 'A Complete Guide to useEffect' — the data-fetching race-condition subsection (response order independent of request order; cancellation flag / AbortController in cleanup) — ~20m
+- [remediation] OWASP Path Traversal & File Inclusion Prevention — Path Traversal attack page + linked Input Validation Cheat Sheet §'File Path Traversal' — focused chapter on canonicalize-then-verify and why substring/denylist checks fail against `..`, encoded, and symlink variants — ~30m
+- [remediation] OWASP API Security Top 10 (2023) — API1:2023 Broken Object Level Authorization — API1:2023 §Description and §How to Prevent — one focused chapter on why object-level authorization is orthogonal to input containment and must be a server-side ownership lookup — ~20m
 
 </small>
 </details>
 
 <details>
-<summary><samp>q4 · backend · soft-delete-vs-hard-delete · pre 2 → post 3 · ceiling — · transitional b1–b3</samp></summary>
+<summary><samp>q4 · systems-distributed · dead-letter-queue · pre 2 → post 3 · ceiling b1–b2 · transitional b3</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A backend team adds soft-delete (a deleted_at timestamp, NULL when active) to a users table that already has a UNIQUE constraint on email. After deploying, two problems surface: (a) a user who deletes their account can no longer re-register with the same email — the insert fails; (b) an admin 'active user count' report is now slightly inflated. Explain the mechanism behind each. For (a), say precisely why the existing unique constraint collides with the soft-deleted row, and give the exact index construct that enforces 'unique among active rows only' — state the predicate and why a NULL deleted_at row satisfies it. For (b), explain why the count went wrong and what invariant every read query now carries. Finally, name one cost soft-delete imposes that hard-delete does not, beyond these two bugs.
+**Scenario:** A distributed system, 'EventBus', has consumers reading from a message queue with at-least-once delivery and automatic redelivery on processing failure. One malformed message that always throws on deserialization is now stuck in an infinite redelivery loop, blocking the partition and starving valid messages behind it. The team proposes a dead-letter queue (DLQ) with a max-redelivery count. Explain the mechanism: how a redelivery counter plus a DLQ breaks the loop, where the count is tracked (broker-side delivery count vs. message-header attempt count the consumer increments), and what happens to the message when the threshold is crossed. Explain the tradeoff of setting the retry threshold too low (transient failures get dead-lettered) versus too high (head-of-line blocking persists longer). Distinguish a genuinely poison message from a transient downstream outage and say why the DLQ is the right tool for one but not the other.
 
  
 
-**Refinement:** You said 'the pure unique constraint scopes the access to only readtime, and the row is declared as alive by postgres therefore the insert fails'. Clarify: what property of the UNIQUE index — separate from any locking — causes the second INSERT to be rejected even when the first row has a non-NULL deleted_at value?
+**Refinement:** You said 'The core issue is the malformed message that throws on deserialization. This is ...'. What breaks if that assumption is wrong?
 
  
 
-**Assessment:** Across both turns the answer correctly reaches for the partial unique index as the remediation but never satisfies the B3 mechanism gate: it never states the index predicate, never explains why a NULL deleted_at row is included in (and a non-NULL row excluded from) the index, and instead constructs an invented lock taxonomy ('shared exclusive', 'read-only exclusive', 'ON CONFLICT lever'). The refinement probe specifically asked for the index property separate from locking, and the answer doubled down on locking rather than identifying that the plain UNIQUE index covers all rows including the soft-deleted one. The (b) count explanation also misses that no implicit filtering occurs and the per-query WHERE deleted_at IS NULL invariant, and the named extra cost (write ordering/versioning serialization) is not the retention/filter-obligation cost soft-delete actually imposes. The gap is in why index coverage — not locking — produces the collision.
+**Assessment:** The answer correctly identifies the poison-message starvation domain and names both the broker delivery-count and consumer header attempt-count tracking sites, but it inverts the central mechanism judgment: it claims the DLQ is the right tool for the transient downstream outage and 'best for timeout retries,' when in fact the DLQ exists to isolate deterministically-failing poison messages while transient outages call for retry/backoff. The refinement walks this back partially — distinguishing a timeout-bound throw from a malformed-schema/registry/trust-boundary failure — but never cleanly states why a deterministic poison message is exactly what the DLQ is for, leaving the core why-under-retry invariant only marginally satisfied. The gap is in the poison-vs-transient classification and the precise consequence of crossing the threshold (out-of-band retention for replay, not 'drop').
 
 **Literature**
 
-- [remediation] PostgreSQL Documentation — Partial Indexes — §11.8 Partial Indexes — the example building a UNIQUE partial index with a WHERE predicate, and §11.5 Unique Indexes for why a plain unique index covers all rows — ~30m
-- [remediation] Patterns of Enterprise Application Architecture / Time Narrative — Soft Delete tradeoffs — The section on retaining historical rows and the obligation it imposes on every read query — ~15m
+- [remediation] Enterprise Integration Patterns — Dead Letter Channel + Invalid Message Channel chapter — the focused chapter distinguishing an invalid (poison) message from a transient processing failure and which channel each belongs to — ~30m
+- [remediation] Designing Data-Intensive Applications — DDIA Ch. 11 §Fault Tolerance — at-least-once delivery + idempotent processing, and the distinction between deterministic and transient processing failures (one focused chapter) — ~1h
 
 </small>
 </details>
 
 <details>
-<summary><samp>q5 · data-engineering · medallion-architecture · pre 3 → post 3 · ceiling b1–b2 · transitional b3–b5</samp></summary>
+<summary><samp>q5 · frontend · optimistic-ui-update · pre 3 → post 3 · ceiling b2 · transitional b3</samp></summary>
 
 <small>
 
  
 
-**Scenario:** A data team is designing a lakehouse and standardizes on a bronze/silver/gold (medallion) layering. A reviewer pushes back: 'Why not just land cleaned, conformed data directly into silver and skip bronze — bronze is duplicated storage of raw data we already have upstream.' Defend the layering by articulating the distinct PURPOSE of each layer and the mechanism each enables. Specifically: (1) what does keeping raw, append-only bronze give you that a silver-only design loses — frame this in terms of replay/reprocessing when a transformation bug or a schema-evolution requirement is discovered downstream. (2) What does silver cost you that bronze does not — name the lossy operations (dedup, conformance, type coercion) and why they are irreversible once you discard the raw rows. (3) What rigidity does a gold aggregate introduce that silver avoids, and what happens when the required aggregation grain changes? Commit to whether the reviewer's shortcut is acceptable and on what axis you'd reject it.
+**Scenario:** A frontend for 'TaskBoard' lets users toggle a task's 'done' checkbox. Currently it disables the checkbox, fires a PATCH request, and only re-enables/updates the UI when the server responds — users perceive lag. The team wants an optimistic update: flip the checkbox immediately, then send the request. Explain the mechanism of an optimistic update: how you snapshot prior state, apply the change to local state before the network call, and reconcile on response. Describe the failure path — what must happen if the PATCH fails or times out (rollback to the snapshot, surface an error). Compare optimistic update against the pessimistic (wait-for-server) approach on the axes of perceived latency and consistency risk, and name one scenario where you would NOT use an optimistic update (e.g. irreversible or money-moving actions) and why.
 
  
 
-**Refinement:** You said 'roll backs are cheap on corrupted upstream normalization/dedupe at silver and gold tiers'. Clarify: what property of append-only bronze makes replay produce a deterministically identical result when the transformation logic itself has changed, rather than just restoring a prior snapshot?
+**Refinement:** You said 'the ordering when sent via debounce is incorrect, so the latest state returned persists but not the accurate one'. Clarify: what property of the network or request lifecycle causes an earlier-fired request to resolve after a later one, and how does a snapshot-per-request approach address or fail to address that property?
 
  
 
-**Assessment:** The response correctly identifies the purpose of each medallion layer, names the lossy silver operations (dedup, coercion, conformance), articulates the gold grain-change blast radius, and commits firmly that the reviewer's shortcut is unacceptable. The targeted probe asked for the specific property of append-only bronze that makes replay deterministically reproduce a result when the transformation LOGIC has changed (as opposed to restoring a prior output snapshot). The refinement answers with ingest-time causal ordering (watermarks, hybrid clocks) rather than the load-bearing point that bronze is the immutable INPUT and replay means recomputing from raw with the new code — the distinction between regenerating a derived view and restoring a checkpoint is the gap. Read the cited replay/event-sourcing material to see why the immutable-input framing, not ordering, is what makes replay reproduce changed logic.
+**Assessment:** The answer correctly identified the optimistic snapshot/apply/rollback lifecycle and correctly named the money-moving/irreversible case as off-limits for optimistic updates, which carries it to the B3 direction. The refinement probe targeted the rapid-toggle response-order race; the answer correctly recognized that response resolution order is independent of fire order, but reconciled it via passing full component state to the server for server-side ordering rather than the canonical client-side primitive. The gap is in which layer owns the reconciliation and what primitive enforces last-write-wins on the client without a round trip to the server for ordering.
 
 **Literature**
 
-- [remediation] Designing Data-Intensive Applications — Ch. 11 §Event Sourcing and §The Unbundled Database, pp. 457–465 — raw-log replay as the substrate for deriving all downstream views — ~2h 30m
-- [remediation] Delta Lake: The Definitive Guide — Ch. 9 §Medallion Architecture — the reprocessing contract bronze provides and the silver conformance/loss tradeoff — ~45m
+- [remediation] TanStack Query — Optimistic Updates — Optimistic Updates guide — onMutate (snapshot via getQueryData + cancelQueries), onError (rollback to snapshot), onSettled (invalidate/refetch to reconcile) — ~15m
+- [remediation] A Complete Guide to useEffect — Race Conditions in Fetch — §Race conditions / cleanup — response order is independent of request order; AbortController-in-cleanup or a per-request ignore flag collapses the rapid-fire race on the client — ~30m
 
 </small>
 </details>
